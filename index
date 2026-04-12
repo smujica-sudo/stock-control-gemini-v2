@@ -1,522 +1,460 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  LayoutDashboard, Search, History, FileText, 
-  ChevronRight, ArrowUpCircle, ArrowDownCircle, 
-  SlidersHorizontal, RefreshCcw, Package, 
-  AlertTriangle, CheckCircle2, User, Lock, 
-  Plus, Download, ExternalLink, Loader2,
-  PackageCheck, TrendingDown, Clock, Info,
-  Filter, Home, AlertCircle, XCircle
-} from 'lucide-react';
-
-// --- CONFIGURACIÓN ---
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBj6qSh5Pq0C-NZA2CQ54KRwwVdDhBwFQLTObYterxQJ0DY67Jcdc-VzfnRiYwICGiBw/exec";
-
-const App = () => {
-  // --- ESTADOS ---
-  const [view, setView] = useState('login'); 
-  const [user, setUser] = useState(null);
-  const [pin, setPin] = useState('');
-  const [data, setData] = useState({ materiales: [], movimientos: [], usuarios: [] });
-  const [isLoading, setIsLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isSyncing, setIsSyncing] = useState(false);
-  const [modalType, setModalType] = useState(null); 
-  const [selectedMaterial, setSelectedMaterial] = useState(null);
-
-  // --- LÓGICA DE DATOS ---
-  const fetchData = async () => {
-    if (!SCRIPT_URL) return;
-    setIsSyncing(true);
-    try {
-      const response = await fetch(SCRIPT_URL);
-      const json = await response.json();
-      setData(json);
-    } catch (e) {
-      console.error("Error en sincronización:", e);
-    } finally {
-      setIsSyncing(false);
-    }
-  };
-
-  useEffect(() => {
-    if (user) fetchData();
-  }, [user]);
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    const validUser = data.usuarios.find(u => u.pin == pin) || (pin === "1234" ? { nombre: "Admin Kawas", rol: "Administrador" } : null);
-    if (validUser) {
-      setUser(validUser);
-      setView('dashboard');
-    } else {
-      setPin('');
-    }
-  };
-
-  // KPIs y Lógica de Negocio
-  const stats = useMemo(() => {
-    const materiales = data.materiales || [];
-    const movimientos = data.movimientos || [];
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kawas Coffee - Control de Stock</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <!-- Babel para JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide-react@latest"></script>
     
-    const totalItems = materiales.length;
-    const criticalItems = materiales.filter(m => m.stock <= m.minimo && m.stock > 0).length;
-    const outOfStock = materiales.filter(m => (parseFloat(m.stock) || 0) <= 0).length;
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F8F9FA;
+        }
 
-    const getDaysLeft = (materialId, currentStock) => {
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
-      const recentOuts = movimientos.filter(mov => 
-        mov.item_id == materialId && 
-        mov.tipo === 'OUT' && 
-        new Date(mov.timestamp) >= sevenDaysAgo
-      );
-      
-      const totalConsumed = recentOuts.reduce((acc, curr) => acc + Math.abs(parseFloat(curr.cantidad || 0)), 0);
-      const avgDaily = totalConsumed / 7;
-      
-      if (avgDaily <= 0) return '---';
-      return Math.round(currentStock / avgDaily);
-    };
+        .animate-pulse-slow {
+            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
 
-    const categories = [...new Set(materiales.map(m => m.categoria))];
-    const categoryStats = categories.map(cat => {
-      const items = materiales.filter(m => m.categoria === cat);
-      return {
-        name: cat,
-        total: items.length,
-        critical: items.filter(m => m.stock <= m.minimo).length,
-        outOfStock: items.filter(m => m.stock <= 0).length,
-        stockTotal: items.reduce((acc, curr) => acc + (parseFloat(curr.stock) || 0), 0)
-      };
-    });
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .7; }
+        }
 
-    return { totalItems, criticalItems, outOfStock, getDaysLeft, categoryStats };
-  }, [data]);
+        /* Estilo para ocultar scrollbars */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-  const filteredMaterials = (data.materiales || []).filter(m => 
-    m.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    m.subcategoria?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+    <script type="text/babel">
+        const { useState, useEffect, useMemo } = React;
+        const { 
+            LayoutDashboard, Search, History, FileText, ChevronRight, 
+            ArrowUpCircle, ArrowDownCircle, SlidersHorizontal, RefreshCcw, 
+            Package, AlertTriangle, CheckCircle2, User, Lock, Plus, 
+            Download, ExternalLink, Loader2, PackageCheck, TrendingDown, 
+            Clock, Info, Filter, Home, AlertCircle, XCircle 
+        } = lucideReact;
 
-  // --- SUB-COMPONENTES ---
+        // --- CONFIGURACIÓN ---
+        // Pega aquí tu URL de Apps Script
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBj6qSh5Pq0C-NZA2CQ54KRwwVdDhBwFQLTObYterxQJ0DY67Jcdc-VzfnRiYwICGiBw/exec";
 
-  const Sidebar = () => (
-    <div className="hidden lg:flex flex-col w-64 bg-white border-r border-[#E0E0E0] fixed h-full z-20">
-      <div className="p-8">
-        <div className="flex items-center gap-3 text-[#1a73e8]">
-          <PackageCheck size={32} />
-          <span className="font-bold text-xl tracking-tight">Kawas Stock</span>
-        </div>
-      </div>
-      <nav className="flex-1 px-4 space-y-2">
-        {[
-          { id: 'dashboard', label: 'Inicio', icon: <Home size={20} /> },
-          { id: 'inventory', label: 'Bodega', icon: <Search size={20} /> },
-          { id: 'history', label: 'Historial', icon: <History size={20} /> },
-          { id: 'reports', label: 'Reportes', icon: <FileText size={20} /> },
-        ].map(item => (
-          <button 
-            key={item.id}
-            onClick={() => setView(item.id)}
-            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all ${view === item.id ? 'bg-[#E8F0FE] text-[#1a73e8] font-bold' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
-          >
-            {item.icon} {item.label}
-          </button>
-        ))}
-      </nav>
-      <div className="p-6 border-t border-[#F1F3F4]">
-        <div className="flex items-center gap-3 p-3 bg-[#F8F9FA] rounded-2xl">
-          <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs">
-            {user?.nombre?.charAt(0)}
-          </div>
-          <div className="overflow-hidden">
-            <p className="text-xs font-bold truncate">{user?.nombre}</p>
-            <p className="text-[10px] text-[#5F6368] uppercase">{user?.rol}</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+        const App = () => {
+            const [view, setView] = useState('login'); 
+            const [user, setUser] = useState(null);
+            const [pin, setPin] = useState('');
+            const [data, setData] = useState({ materiales: [], movimientos: [], usuarios: [] });
+            const [isLoading, setIsLoading] = useState(false);
+            const [searchTerm, setSearchTerm] = useState('');
+            const [isSyncing, setIsSyncing] = useState(false);
+            const [modalType, setModalType] = useState(null); 
+            const [selectedMaterial, setSelectedMaterial] = useState(null);
 
-  const Dashboard = () => (
-    <div className="space-y-8 animate-in fade-in duration-500">
-      <div className="flex justify-between items-end">
-        <div>
-          <h2 className="text-3xl font-bold">Panel de Control</h2>
-          <p className="text-[#5F6368]">Estado de insumos críticos para producción.</p>
-        </div>
-        <button 
-          onClick={fetchData} 
-          disabled={isSyncing}
-          className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E0E0E0] rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"
-        >
-          <RefreshCcw size={18} className={isSyncing ? 'animate-spin text-blue-600' : ''} />
-          <span className="text-sm font-bold">Sincronizar</span>
-        </button>
-      </div>
+            const fetchData = async () => {
+                if (!SCRIPT_URL) return;
+                setIsSyncing(true);
+                try {
+                    const response = await fetch(SCRIPT_URL);
+                    const json = await response.json();
+                    setData(json);
+                } catch (e) {
+                    console.error("Error en sincronización:", e);
+                } finally {
+                    setIsSyncing(false);
+                }
+            };
 
-      {/* Alerta Crítica Global */}
-      {stats.outOfStock > 0 && (
-        <div className="bg-red-600 text-white p-6 rounded-[32px] shadow-xl shadow-red-200 flex items-center justify-between animate-pulse">
-          <div className="flex items-center gap-4">
-            <div className="bg-white/20 p-3 rounded-2xl">
-              <XCircle size={32} />
-            </div>
-            <div>
-              <h4 className="text-xl font-black">ACCIÓN REQUERIDA</h4>
-              <p className="text-red-100 text-sm">Hay {stats.outOfStock} materiales totalmente agotados en bodega.</p>
-            </div>
-          </div>
-          <button 
-            onClick={() => { setView('inventory'); setSearchTerm(''); }}
-            className="bg-white text-red-600 px-6 py-3 rounded-full font-bold text-sm hover:bg-red-50 transition-colors"
-          >
-            Ver Agotados
-          </button>
-        </div>
-      )}
+            useEffect(() => {
+                if (user) fetchData();
+            }, [user]);
 
-      {/* KPI Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: 'Ítems Totales', val: stats.totalItems, icon: <Package />, color: 'text-blue-600', bg: 'bg-blue-50' },
-          { label: 'Stock Crítico', val: stats.criticalItems, icon: <AlertTriangle />, color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'Agotados', val: stats.outOfStock, icon: <TrendingDown />, color: 'text-red-600', bg: 'bg-red-50' },
-          { label: 'Disponibilidad', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100)}%`, icon: <CheckCircle2 />, color: 'text-green-600', bg: 'bg-green-50' },
-        ].map((kpi, i) => (
-          <div key={i} className={`bg-white p-5 rounded-[28px] border transition-all ${kpi.label === 'Agotados' && stats.outOfStock > 0 ? 'border-red-200 shadow-lg shadow-red-50' : 'border-[#E0E0E0] shadow-sm'}`}>
-            <div className={`w-10 h-10 ${kpi.bg} ${kpi.color} rounded-xl flex items-center justify-center mb-3`}>
-              {kpi.icon}
-            </div>
-            <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">{kpi.label}</p>
-            <p className="text-2xl font-black mt-1">{kpi.val}</p>
-          </div>
-        ))}
-      </div>
+            const handleLogin = (e) => {
+                e.preventDefault();
+                const validUser = data.usuarios.find(u => u.pin == pin) || 
+                                 (pin === "1234" ? { nombre: "Admin Kawas", rol: "Administrador" } : null);
+                if (validUser) {
+                    setUser(validUser);
+                    setView('dashboard');
+                } else {
+                    setPin('');
+                }
+            };
 
-      {/* Categorías Madres */}
-      <div>
-        <h3 className="text-lg font-bold mb-4 flex items-center gap-2">
-          <Filter size={20} className="text-blue-600" /> Categorías de Inventario
-        </h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {stats.categoryStats.map(cat => (
-            <div key={cat.name} className={`bg-white p-6 rounded-[32px] border transition-all cursor-pointer group hover:shadow-lg ${cat.outOfStock > 0 ? 'border-red-300' : 'border-[#E0E0E0]'}`}>
-              <div className="flex justify-between items-start mb-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${cat.outOfStock > 0 ? 'bg-red-600 text-white' : 'bg-[#F1F3F4] text-[#1a73e8] group-hover:bg-[#1a73e8] group-hover:text-white'}`}>
-                  <Package size={24} />
-                </div>
-                <div className="flex flex-col gap-1 items-end">
-                  {cat.outOfStock > 0 && (
-                    <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] font-black animate-pulse">
-                      {cat.outOfStock} AGOTADOS
-                    </span>
-                  )}
-                  {cat.critical > 0 && cat.outOfStock === 0 && (
-                    <span className="bg-amber-100 text-amber-700 px-3 py-1 rounded-full text-[9px] font-black">
-                      {cat.critical} CRÍTICOS
-                    </span>
-                  )}
-                </div>
-              </div>
-              <h4 className="text-lg font-bold">{cat.name}</h4>
-              <div className="mt-4 flex items-center justify-between border-t border-[#F1F3F4] pt-4">
-                <div>
-                  <p className="text-[10px] font-bold text-[#5F6368] uppercase">Ítems</p>
-                  <p className="text-lg font-bold">{cat.total}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[10px] font-bold text-[#5F6368] uppercase">Stock Total</p>
-                  <p className="text-lg font-bold text-blue-600">{cat.stockTotal.toLocaleString()}</p>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
+            const stats = useMemo(() => {
+                const materiales = data.materiales || [];
+                const movimientos = data.movimientos || [];
+                const totalItems = materiales.length;
+                const criticalItems = materiales.filter(m => m.stock <= m.minimo && m.stock > 0).length;
+                const outOfStockList = materiales.filter(m => (parseFloat(m.stock) || 0) <= 0);
+                const outOfStock = outOfStockList.length;
 
-  return (
-    <div className="min-h-screen bg-[#F8F9FA] text-[#202124] font-sans selection:bg-blue-100 flex flex-col lg:flex-row">
-      {view === 'login' ? (
-        <div className="min-h-screen w-full flex items-center justify-center p-6 bg-[#F8F9FA]">
-          <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-xl border border-[#E0E0E0] text-center">
-            <div className="w-20 h-20 bg-[#1a73e8] rounded-3xl mx-auto mb-8 flex items-center justify-center text-white shadow-lg rotate-3">
-              <PackageCheck size={40} />
-            </div>
-            <h1 className="text-2xl font-bold mb-2">Kawas Coffee</h1>
-            <p className="text-[#5F6368] text-sm mb-10">Bodega e Inventario</p>
-            <form onSubmit={handleLogin} className="space-y-6">
-              <input 
-                type="password" 
-                maxLength={4}
-                placeholder="PIN"
-                value={pin}
-                onChange={e => setPin(e.target.value)}
-                className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] focus:ring-4 focus:ring-blue-100 outline-none transition-all border-2 border-transparent focus:border-blue-200"
-              />
-              <button className="w-full bg-[#1a73e8] text-white py-5 rounded-full font-bold shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-all active:scale-95">
-                Ingresar
-              </button>
-            </form>
-          </div>
-        </div>
-      ) : (
-        <>
-          <Sidebar />
-          
-          <main className="flex-1 lg:ml-64 p-4 lg:p-10 pb-28 lg:pb-10">
-            {view === 'inventory' && (
-              <div className="sticky top-0 z-10 bg-[#F8F9FA]/80 backdrop-blur-md pb-6 pt-2">
-                <div className="relative group">
-                  <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#5F6368] group-focus-within:text-blue-600 transition-colors" size={24} />
-                  <input 
-                    type="text" 
-                    placeholder="Filtrar materiales..."
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
-                    className="w-full pl-14 pr-6 py-5 bg-white border border-[#E0E0E0] rounded-[30px] shadow-sm focus:ring-4 focus:ring-blue-100 outline-none transition-all text-lg font-medium"
-                  />
-                </div>
-              </div>
-            )}
+                const getDaysLeft = (materialId, currentStock) => {
+                    const sevenDaysAgo = new Date();
+                    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+                    const recentOuts = movimientos.filter(mov => 
+                        mov.item_id == materialId && 
+                        mov.tipo === 'OUT' && 
+                        new Date(mov.timestamp) >= sevenDaysAgo
+                    );
+                    const totalConsumed = recentOuts.reduce((acc, curr) => acc + Math.abs(parseFloat(curr.cantidad || 0)), 0);
+                    const avgDaily = totalConsumed / 7;
+                    return avgDaily <= 0 ? '---' : Math.round(currentStock / avgDaily);
+                };
 
-            {view === 'dashboard' && <Dashboard />}
-            
-            {view === 'inventory' && (
-              <div className="grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-bottom-2">
-                {filteredMaterials.length > 0 ? filteredMaterials.map(m => {
-                  const days = stats.getDaysLeft(m.id, m.stock);
-                  const isCritical = m.stock <= m.minimo && m.stock > 0;
-                  const isOutOfStock = (parseFloat(m.stock) || 0) <= 0;
-
-                  return (
-                    <div 
-                      key={m.id} 
-                      className={`bg-white p-6 rounded-[32px] border transition-all flex flex-col md:flex-row md:items-center justify-between gap-6 ${
-                        isOutOfStock ? 'border-red-400 bg-red-50/10 shadow-lg shadow-red-50' : 
-                        isCritical ? 'border-amber-300' : 'border-[#E0E0E0]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-5">
-                        <div className={`relative w-16 h-16 rounded-2xl flex items-center justify-center ${
-                          isOutOfStock ? 'bg-red-600 text-white' : 
-                          isCritical ? 'bg-amber-100 text-amber-600' : 'bg-green-50 text-green-600'
-                        }`}>
-                          <Package size={32} />
-                          {isOutOfStock && <span className="absolute -top-2 -right-2 w-5 h-5 bg-white text-red-600 rounded-full flex items-center justify-center shadow-md animate-bounce"><XCircle size={14} /></span>}
-                        </div>
-                        <div>
-                          <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">
-                            {m.categoria} {isOutOfStock && <span className="ml-2 text-red-600">• AGOTADO</span>}
-                          </p>
-                          <h4 className={`text-xl font-bold ${isOutOfStock ? 'text-red-700' : 'text-[#202124]'}`}>{m.nombre}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-xs text-[#5F6368] font-medium">Mín: {m.minimo} {m.unidad}</span>
-                            {isCritical && <span className="text-[10px] font-black text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full uppercase">Crítico</span>}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-8 md:px-10 border-t md:border-t-0 md:border-l border-[#F1F3F4] pt-4 md:pt-0">
-                        <div className="text-center">
-                          <p className="text-[10px] font-bold text-[#5F6368] uppercase">Stock</p>
-                          <p className={`text-2xl font-black ${isOutOfStock ? 'text-red-600 animate-pulse' : isCritical ? 'text-amber-600' : 'text-[#202124]'}`}>
-                            {parseFloat(m.stock || 0).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="text-center">
-                          <p className="text-[10px] font-bold text-[#5F6368] uppercase">Alcance</p>
-                          <p className={`text-2xl font-black ${isOutOfStock ? 'text-red-300' : 'text-[#1a73e8]'}`}>{isOutOfStock ? '0' : days} <span className="text-xs font-bold">días</span></p>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <button onClick={() => { setSelectedMaterial(m); setModalType('IN'); }} className="flex-1 md:flex-none p-4 bg-[#E8F0FE] text-[#1a73e8] rounded-2xl hover:bg-[#1a73e8] hover:text-white transition-all"><Plus size={24} /></button>
-                        <button 
-                          disabled={isOutOfStock}
-                          onClick={() => { setSelectedMaterial(m); setModalType('OUT'); }} 
-                          className={`flex-1 md:flex-none p-4 rounded-2xl transition-all ${isOutOfStock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-[#FEE8E8] text-red-600 hover:bg-red-600 hover:text-white'}`}
-                        >
-                          <TrendingDown size={24} />
-                        </button>
-                        <button onClick={() => { setSelectedMaterial(m); setModalType('ADJUST'); }} className="flex-1 md:flex-none p-4 bg-[#F1F3F4] text-[#5F6368] rounded-2xl hover:bg-[#5F6368] hover:text-white transition-all"><SlidersHorizontal size={24} /></button>
-                      </div>
-                    </div>
-                  );
-                }) : (
-                  <div className="text-center py-20 bg-white rounded-[40px] border border-dashed border-[#E0E0E0]">
-                    <div className="bg-[#F8F9FA] w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4 text-[#BDC1C6]">
-                      <Search size={32} />
-                    </div>
-                    <p className="text-[#5F6368] font-medium">No se encontraron materiales con ese nombre.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {view === 'history' && (
-              <div className="bg-white rounded-[32px] border border-[#E0E0E0] overflow-hidden shadow-sm animate-in fade-in">
-                <div className="p-8 border-b border-[#F1F3F4] flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <History className="text-blue-600" size={24} />
-                    <h3 className="text-xl font-bold">Bitácora</h3>
-                  </div>
-                  <button onClick={fetchData} className="p-2 hover:bg-[#F1F3F4] rounded-full transition-colors"><RefreshCcw size={20} /></button>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead className="bg-[#F8F9FA] text-[#5F6368] text-[10px] uppercase font-black tracking-widest">
-                      <tr>
-                        <th className="px-8 py-5">Fecha</th>
-                        <th className="px-8 py-5">Movimiento</th>
-                        <th className="px-8 py-5">Material</th>
-                        <th className="px-8 py-5 text-right">Cant / Saldo</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-[#F1F3F4]">
-                      {data.movimientos?.slice().reverse().map((m, i) => (
-                        <tr key={i} className="hover:bg-[#F8F9FA] transition-colors">
-                          <td className="px-8 py-5">
-                            <p className="text-xs font-bold text-[#202124]">{new Date(m.timestamp).toLocaleDateString()}</p>
-                            <p className="text-[9px] text-[#5F6368] uppercase">{m.usuario}</p>
-                          </td>
-                          <td className="px-8 py-5">
-                            <span className={`px-3 py-1 rounded-full text-[9px] font-black ${
-                              m.tipo === 'IN' ? 'bg-green-100 text-green-700' : 
-                              m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                            }`}>
-                              {m.tipo}
-                            </span>
-                          </td>
-                          <td className="px-8 py-5">
-                            <p className="text-xs font-bold">{m.item_nombre}</p>
-                          </td>
-                          <td className="px-8 py-5 text-right">
-                            <p className={`text-xs font-black ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                              {parseFloat(m.diferencia) > 0 ? '+' : ''}{m.diferencia}
-                            </p>
-                            <p className="text-[10px] font-bold text-[#5F6368]">Stock: {m.stock_nuevo}</p>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {view === 'reports' && (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in">
-                <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group">
-                  <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <FileText size={40} />
-                  </div>
-                  <h3 className="text-2xl font-bold mb-4">Stock PDF</h3>
-                  <button onClick={() => window.print()} className="w-full py-5 bg-[#F1F3F4] text-[#202124] rounded-full font-bold hover:bg-[#E0E0E0] transition-all flex items-center justify-center gap-2">
-                    <Download size={20} /> Generar PDF
-                  </button>
-                </div>
-                <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group">
-                  <div className="w-20 h-20 bg-green-50 text-green-600 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <ExternalLink size={40} />
-                  </div>
-                  <h3 className="text-2xl font-bold mb-4">Excel Google Drive</h3>
-                  <button className="w-full py-5 bg-[#1a73e8] text-white rounded-full font-bold shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-all flex items-center justify-center gap-2">
-                    <CheckCircle2 size={20} /> Guardar Copia
-                  </button>
-                </div>
-              </div>
-            )}
-          </main>
-
-          {/* Footer Nav (Mobile) */}
-          <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] px-4 py-4 z-40 flex justify-around items-center rounded-t-[30px] shadow-2xl">
-            {[
-              { id: 'dashboard', icon: <LayoutDashboard size={24} />, label: 'Inicio' },
-              { id: 'inventory', icon: <Search size={24} />, label: 'Bodega' },
-              { id: 'history', icon: <History size={24} />, label: 'Bitácora' },
-              { id: 'reports', icon: <FileText size={24} />, label: 'Reportes' },
-            ].map(item => (
-              <button 
-                key={item.id}
-                onClick={() => setView(item.id)}
-                className={`flex flex-col items-center gap-1 p-2 transition-all ${view === item.id ? 'text-blue-600' : 'text-[#BDC1C6]'}`}
-              >
-                <div className={`p-2 px-6 rounded-full transition-all ${view === item.id ? 'bg-blue-50' : ''}`}>
-                  {item.icon}
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
-              </button>
-            ))}
-          </nav>
-        </>
-      )}
-
-      {/* MODAL MOVIMIENTOS */}
-      {modalType && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-[#202124]/40 backdrop-blur-sm animate-in fade-in" onClick={() => !isLoading && setModalType(null)}></div>
-          <div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl z-10 overflow-hidden animate-in zoom-in-95 border border-[#E0E0E0]">
-            <div className={`p-8 text-white ${modalType === 'IN' ? 'bg-green-600' : modalType === 'OUT' ? 'bg-red-600' : 'bg-gray-800'}`}>
-              <div className="flex justify-between items-start">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Registrar {modalType}</p>
-                  <h3 className="text-2xl font-bold leading-tight">{selectedMaterial?.nombre}</h3>
-                </div>
-                <div className="p-3 bg-white/20 rounded-2xl">
-                  {modalType === 'IN' ? <ArrowUpCircle size={28} /> : <ArrowDownCircle size={28} />}
-                </div>
-              </div>
-            </div>
-            
-            <form className="p-8 space-y-6" onSubmit={async (e) => {
-              e.preventDefault();
-              setIsLoading(true);
-              const qty = e.target.cantidad.value;
-              const nota = e.target.nota.value;
-              
-              try {
-                await fetch(SCRIPT_URL, {
-                  method: 'POST',
-                  mode: 'no-cors',
-                  body: JSON.stringify({
-                    action: 'movimiento',
-                    usuario: user.nombre,
-                    tipo: modalType,
-                    materialId: selectedMaterial.id,
-                    cantidad: qty,
-                    nota: nota
-                  })
+                const categories = [...new Set(materiales.map(m => m.categoria))];
+                const categoryStats = categories.map(cat => {
+                    const items = materiales.filter(m => m.categoria === cat);
+                    return {
+                        name: cat,
+                        total: items.length,
+                        critical: items.filter(m => m.stock <= m.minimo && m.stock > 0).length,
+                        outOfStock: items.filter(m => (parseFloat(m.stock) || 0) <= 0).length,
+                        stockTotal: items.reduce((acc, curr) => acc + (parseFloat(curr.stock) || 0), 0)
+                    };
                 });
-                setModalType(null);
-                setTimeout(fetchData, 1500);
-              } catch (err) { console.error(err); } finally { setIsLoading(false); }
-            }}>
-              <div className="space-y-1">
-                <label className="text-xs font-black text-[#5F6368] uppercase ml-1">Cantidad ({selectedMaterial?.unidad})</label>
-                <input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-3xl outline-none focus:ring-4 focus:ring-blue-100 text-2xl font-black" placeholder="0.00" autoFocus />
-              </div>
-              <div className="space-y-1">
-                <label className="text-xs font-black text-[#5F6368] uppercase ml-1">Comentario</label>
-                <input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-2xl outline-none focus:ring-4 focus:ring-blue-100 text-sm font-medium" placeholder="Opcional..." />
-              </div>
-              <div className="flex gap-4 pt-4">
-                <button type="button" onClick={() => setModalType(null)} className="flex-1 py-4 font-bold text-[#5F6368] hover:bg-[#F1F3F4] rounded-2xl transition-all">Cancelar</button>
-                <button disabled={isLoading} className="flex-[2] py-4 bg-[#1a73e8] text-white rounded-3xl font-bold shadow-xl shadow-blue-100 flex items-center justify-center gap-2 hover:bg-[#1557b0] transition-all disabled:opacity-50">
-                  {isLoading ? <Loader2 className="animate-spin" /> : 'Confirmar'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
 
-export default App;
+                return { totalItems, criticalItems, outOfStock, outOfStockList, getDaysLeft, categoryStats };
+            }, [data]);
+
+            const filteredMaterials = (data.materiales || []).filter(m => 
+                m.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                m.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                m.subcategoria?.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+
+            // Vistas y Componentes...
+            if (view === 'login') {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-6">
+                        <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-xl border border-[#E0E0E0] text-center">
+                            <div className="w-20 h-20 bg-[#1a73e8] rounded-3xl mx-auto mb-8 flex items-center justify-center text-white shadow-lg rotate-3">
+                                <PackageCheck size={40} />
+                            </div>
+                            <h1 className="text-2xl font-bold mb-2">Kawas Coffee</h1>
+                            <p className="text-[#5F6368] text-sm mb-10">Bodega e Inventario</p>
+                            <form onSubmit={handleLogin} className="space-y-6">
+                                <input 
+                                    type="password" 
+                                    maxLength={4}
+                                    placeholder="PIN"
+                                    value={pin}
+                                    onChange={e => setPin(e.target.value)}
+                                    className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] focus:ring-4 focus:ring-blue-100 outline-none transition-all border-2 border-transparent focus:border-blue-200"
+                                />
+                                <button className="w-full bg-[#1a73e8] text-white py-5 rounded-full font-bold shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-all active:scale-95">
+                                    Ingresar
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="flex flex-col lg:flex-row min-h-screen pb-24 lg:pb-0">
+                    {/* Sidebar Desktop */}
+                    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-[#E0E0E0] fixed h-full z-20">
+                        <div className="p-8">
+                            <div className="flex items-center gap-3 text-[#1a73e8]">
+                                <PackageCheck size={32} />
+                                <span className="font-bold text-xl tracking-tight">Kawas Stock</span>
+                            </div>
+                        </div>
+                        <nav className="flex-1 px-4 space-y-2">
+                            {[
+                                { id: 'dashboard', label: 'Inicio', icon: <Home size={20} /> },
+                                { id: 'inventory', label: 'Bodega', icon: <Search size={20} /> },
+                                { id: 'history', label: 'Historial', icon: <History size={20} /> },
+                                { id: 'reports', label: 'Reportes', icon: <FileText size={20} /> },
+                            ].map(item => (
+                                <button 
+                                    key={item.id}
+                                    onClick={() => setView(item.id)}
+                                    className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all ${view === item.id ? 'bg-[#E8F0FE] text-[#1a73e8] font-bold' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
+                                >
+                                    {item.icon} {item.label}
+                                </button>
+                            ))}
+                        </nav>
+                        <div className="p-6 border-t border-[#F1F3F4]">
+                            <div className="flex items-center gap-3 p-3 bg-[#F8F9FA] rounded-2xl">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">
+                                    {user?.nombre?.charAt(0)}
+                                </div>
+                                <div className="overflow-hidden">
+                                    <p className="text-xs font-bold truncate">{user?.nombre}</p>
+                                    <p className="text-[10px] text-[#5F6368] uppercase">{user?.rol}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </aside>
+
+                    <main className="flex-1 lg:ml-64 p-4 lg:p-10">
+                        {/* Dashboard View */}
+                        {view === 'dashboard' && (
+                            <div className="space-y-8 animate-in fade-in duration-500">
+                                <div className="flex justify-between items-end">
+                                    <div>
+                                        <h2 className="text-3xl font-bold">Panel de Control</h2>
+                                        <p className="text-[#5F6368]">Estado de insumos críticos para producción.</p>
+                                    </div>
+                                    <button 
+                                        onClick={fetchData} 
+                                        disabled={isSyncing}
+                                        className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E0E0E0] rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"
+                                    >
+                                        <RefreshCcw size={18} className={isSyncing ? 'animate-spin text-blue-600' : ''} />
+                                        <span className="text-sm font-bold">Sincronizar</span>
+                                    </button>
+                                </div>
+
+                                {/* Banner Alerta Roja */}
+                                {stats.outOfStock > 0 && (
+                                    <div className="bg-red-600 text-white p-6 rounded-[32px] shadow-xl shadow-red-100">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                                            <div className="flex items-start gap-4">
+                                                <div className="bg-white/20 p-3 rounded-2xl shrink-0 animate-pulse">
+                                                    <XCircle size={32} />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-xl font-black">ACCIÓN REQUERIDA: STOCK AGOTADO</h4>
+                                                    <p className="text-red-100 text-sm mb-3">Los siguientes materiales requieren reposición inmediata:</p>
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {stats.outOfStockList.map(item => (
+                                                            <span key={item.id} className="bg-white/10 border border-white/20 px-3 py-1 rounded-lg text-xs font-bold">
+                                                                {item.nombre}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <button 
+                                                onClick={() => setView('inventory')}
+                                                className="bg-white text-red-600 px-8 py-4 rounded-full font-black text-sm hover:bg-red-50 transition-all active:scale-95 shadow-lg shrink-0"
+                                            >
+                                                Gestionar Stock
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {[
+                                        { label: 'Ítems Totales', val: stats.totalItems, icon: <Package />, color: 'text-blue-600', bg: 'bg-blue-50' },
+                                        { label: 'Stock Crítico', val: stats.criticalItems, icon: <AlertTriangle />, color: 'text-amber-600', bg: 'bg-amber-50' },
+                                        { label: 'Agotados', val: stats.outOfStock, icon: <TrendingDown />, color: 'text-red-600', bg: 'bg-red-50' },
+                                        { label: 'Disponibilidad', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%`, icon: <CheckCircle2 />, color: 'text-green-600', bg: 'bg-green-50' },
+                                    ].map((kpi, i) => (
+                                        <div key={i} className="bg-white p-5 rounded-[28px] border border-[#E0E0E0] shadow-sm">
+                                            <div className={`w-10 h-10 ${kpi.bg} ${kpi.color} rounded-xl flex items-center justify-center mb-3`}>
+                                                {kpi.icon}
+                                            </div>
+                                            <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">{kpi.label}</p>
+                                            <p className="text-2xl font-black mt-1">{kpi.val}</p>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {/* Categorías */}
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {stats.categoryStats.map(cat => (
+                                        <div key={cat.name} className={`bg-white p-6 rounded-[32px] border transition-all hover:shadow-lg ${cat.outOfStock > 0 ? 'border-red-300' : 'border-[#E0E0E0]'}`}>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${cat.outOfStock > 0 ? 'bg-red-600 text-white' : 'bg-[#F1F3F4] text-[#1a73e8]'}`}>
+                                                    <Package size={24} />
+                                                </div>
+                                                {cat.outOfStock > 0 && <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] font-black animate-pulse">{cat.outOfStock} AGOTADOS</span>}
+                                            </div>
+                                            <h4 className="text-lg font-bold">{cat.name}</h4>
+                                            <div className="mt-4 flex items-center justify-between border-t border-[#F1F3F4] pt-4">
+                                                <p className="text-sm font-bold text-blue-600">{cat.stockTotal.toLocaleString()} unidades</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Inventory View */}
+                        {view === 'inventory' && (
+                            <div className="space-y-6">
+                                <div className="sticky top-0 z-10 bg-[#F8F9FA]/90 backdrop-blur-md pb-4 pt-2">
+                                    <div className="relative">
+                                        <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#5F6368]" size={24} />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Buscar materiales..."
+                                            value={searchTerm}
+                                            onChange={e => setSearchTerm(e.target.value)}
+                                            className="w-full pl-14 pr-6 py-5 bg-white border border-[#E0E0E0] rounded-[30px] shadow-sm focus:ring-4 focus:ring-blue-100 outline-none text-lg"
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    {filteredMaterials.map(m => {
+                                        const days = stats.getDaysLeft(m.id, m.stock);
+                                        const isCritical = m.stock <= m.minimo && m.stock > 0;
+                                        const isOutOfStock = (parseFloat(m.stock) || 0) <= 0;
+                                        return (
+                                            <div key={m.id} className={`bg-white p-6 rounded-[32px] border flex flex-col md:flex-row md:items-center justify-between gap-6 ${isOutOfStock ? 'border-red-400 bg-red-50/10 shadow-lg shadow-red-50' : isCritical ? 'border-amber-300' : 'border-[#E0E0E0]'}`}>
+                                                <div className="flex items-center gap-5">
+                                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isOutOfStock ? 'bg-red-600 text-white' : isCritical ? 'bg-amber-100 text-amber-600' : 'bg-green-50 text-green-600'}`}>
+                                                        <Package size={32} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-[#5F6368] uppercase">{m.categoria} {isOutOfStock && '• AGOTADO'}</p>
+                                                        <h4 className="text-xl font-bold">{m.nombre}</h4>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-8 px-4 text-center">
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-[#5F6368] uppercase">Stock</p>
+                                                        <p className={`text-2xl font-black ${isOutOfStock ? 'text-red-600' : isCritical ? 'text-amber-600' : 'text-[#202124]'}`}>{m.stock}</p>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-[#5F6368] uppercase">Días</p>
+                                                        <p className="text-2xl font-black text-[#1a73e8]">{isOutOfStock ? '0' : days}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => { setSelectedMaterial(m); setModalType('IN'); }} className="p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all"><Plus size={24}/></button>
+                                                    <button disabled={isOutOfStock} onClick={() => { setSelectedMaterial(m); setModalType('OUT'); }} className={`p-4 rounded-2xl transition-all ${isOutOfStock ? 'bg-gray-100 text-gray-300' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><TrendingDown size={24}/></button>
+                                                    <button onClick={() => { setSelectedMaterial(m); setModalType('ADJUST'); }} className="p-4 bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-700 hover:text-white transition-all"><SlidersHorizontal size={24}/></button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* History View */}
+                        {view === 'history' && (
+                            <div className="bg-white rounded-[32px] border border-[#E0E0E0] overflow-hidden shadow-sm">
+                                <div className="p-8 border-b border-[#F1F3F4] flex items-center justify-between">
+                                    <div className="flex items-center gap-3"><History className="text-blue-600" size={24}/><h3 className="text-xl font-bold">Bitácora</h3></div>
+                                    <button onClick={fetchData} className="p-2 hover:bg-[#F1F3F4] rounded-full transition-colors"><RefreshCcw size={20}/></button>
+                                </div>
+                                <div className="overflow-x-auto no-scrollbar">
+                                    <table className="w-full text-left">
+                                        <thead className="bg-[#F8F9FA] text-[#5F6368] text-[10px] uppercase font-black tracking-widest">
+                                            <tr><th className="px-8 py-5">Fecha</th><th className="px-8 py-5">Tipo</th><th className="px-8 py-5">Material</th><th className="px-8 py-5 text-right">Cant / Saldo</th></tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-[#F1F3F4]">
+                                            {data.movimientos?.slice().reverse().map((m, i) => (
+                                                <tr key={i} className="hover:bg-[#F8F9FA]">
+                                                    <td className="px-8 py-5 text-xs font-bold">{new Date(m.timestamp).toLocaleDateString()}</td>
+                                                    <td className="px-8 py-5"><span className={`px-2 py-1 rounded-full text-[9px] font-black ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{m.tipo}</span></td>
+                                                    <td className="px-8 py-5 text-xs font-bold">{m.item_nombre}</td>
+                                                    <td className="px-8 py-5 text-right"><p className={`text-xs font-black ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{m.diferencia}</p><p className="text-[10px] font-bold text-[#5F6368]">Stock: {m.stock_nuevo}</p></td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Reports View */}
+                        {view === 'reports' && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group">
+                                    <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6"><FileText size={40} /></div>
+                                    <h3 className="text-2xl font-bold mb-4">Stock PDF</h3>
+                                    <button onClick={() => window.print()} className="w-full py-5 bg-[#F1F3F4] text-[#202124] rounded-full font-bold hover:bg-[#E0E0E0] transition-all flex items-center justify-center gap-2">Descargar PDF</button>
+                                </div>
+                                <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group">
+                                    <div className="w-20 h-20 bg-green-50 text-green-600 rounded-3xl flex items-center justify-center mx-auto mb-6"><ExternalLink size={40} /></div>
+                                    <h3 className="text-2xl font-bold mb-4">Excel Google Drive</h3>
+                                    <button onClick={() => window.open('https://docs.google.com/spreadsheets/', '_blank')} className="w-full py-5 bg-[#1a73e8] text-white rounded-full font-bold shadow-xl hover:bg-[#1557b0] transition-all flex items-center justify-center gap-2">Abrir Planilla</button>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* Footer Nav Mobile */}
+                    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] px-4 py-4 z-40 flex justify-around items-center rounded-t-[30px] shadow-2xl">
+                        {[
+                            { id: 'dashboard', icon: <LayoutDashboard size={24} />, label: 'Inicio' },
+                            { id: 'inventory', icon: <Search size={24} />, label: 'Bodega' },
+                            { id: 'history', icon: <History size={24} />, label: 'Bitácora' },
+                            { id: 'reports', icon: <FileText size={24} />, label: 'Reportes' },
+                        ].map(item => (
+                            <button key={item.id} onClick={() => setView(item.id)} className={`flex flex-col items-center gap-1 p-2 transition-all ${view === item.id ? 'text-blue-600' : 'text-[#BDC1C6]'}`}>
+                                <div className={`p-2 px-6 rounded-full ${view === item.id ? 'bg-blue-50' : ''}`}>{item.icon}</div>
+                                <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+                            </button>
+                        ))}
+                    </nav>
+
+                    {/* Modal Movimientos */}
+                    {modalType && (
+                        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+                            <div className="absolute inset-0 bg-[#202124]/40 backdrop-blur-sm" onClick={() => !isLoading && setModalType(null)}></div>
+                            <div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl z-10 overflow-hidden animate-in zoom-in-95 border border-[#E0E0E0]">
+                                <div className={`p-8 text-white ${modalType === 'IN' ? 'bg-green-600' : modalType === 'OUT' ? 'bg-red-600' : 'bg-gray-800'}`}>
+                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Registrar {modalType}</p>
+                                    <h3 className="text-2xl font-bold leading-tight">{selectedMaterial?.nombre}</h3>
+                                </div>
+                                <form className="p-8 space-y-6" onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    setIsLoading(true);
+                                    try {
+                                        await fetch(SCRIPT_URL, {
+                                            method: 'POST',
+                                            mode: 'no-cors',
+                                            body: JSON.stringify({
+                                                action: 'movimiento',
+                                                usuario: user.nombre,
+                                                tipo: modalType,
+                                                materialId: selectedMaterial.id,
+                                                cantidad: e.target.cantidad.value,
+                                                nota: e.target.nota.value
+                                            })
+                                        });
+                                        setModalType(null);
+                                        setTimeout(fetchData, 1500);
+                                    } catch (err) { console.error(err); } finally { setIsLoading(false); }
+                                }}>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-black text-[#5F6368] uppercase ml-1">Cantidad ({selectedMaterial?.unidad})</label>
+                                        <input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-3xl outline-none text-2xl font-black" placeholder="0.00" autoFocus />
+                                    </div>
+                                    <div className="space-y-1">
+                                        <label className="text-xs font-black text-[#5F6368] uppercase ml-1">Comentario</label>
+                                        <input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-2xl outline-none text-sm font-medium" placeholder="Opcional..." />
+                                    </div>
+                                    <div className="flex gap-4 pt-4">
+                                        <button type="button" onClick={() => setModalType(null)} className="flex-1 py-4 font-bold text-[#5F6368]">Cancelar</button>
+                                        <button disabled={isLoading} className="flex-[2] py-4 bg-[#1a73e8] text-white rounded-3xl font-bold shadow-xl flex items-center justify-center gap-2">
+                                            {isLoading ? <Loader2 className="animate-spin" /> : 'Confirmar'}
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
