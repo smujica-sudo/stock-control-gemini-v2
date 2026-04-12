@@ -112,50 +112,55 @@
         const getItemIcon = (categoria = '', subcategoria = '', nombre = '') => {
             const text = `${categoria} ${subcategoria} ${nombre}`.toLowerCase();
             
-            // 1. Café, Granos y Espresso
-            if (text.includes('café') || text.includes('cafe') || text.includes('grano') || text.includes('espresso') || text.includes('decaf')) return 'coffee';
+            // PRIORIDAD 1: EMPAQUES Y CONTENEDORES
+            // (Evita que "Bolsa de Café" tome el ícono de taza en lugar del de bolsa)
             
-            // 2. Té, Matcha, Infusiones
-            if (text.includes('té') || text.includes('te ') || text.includes('matcha') || text.includes('chai') || text.includes('infusión') || text.includes('hoja')) return 'emoji_food_beverage';
-            
-            // 3. Leches y Lácteos (Animal o Vegetal)
-            if (text.includes('leche') || text.includes('lacteo') || text.includes('lácteo') || text.includes('avena') || text.includes('almendra') || text.includes('soya') || text.includes('entera') || text.includes('descremada')) return 'water_drop';
-            
-            // 4. Siropes, Salsas y Saborizantes
-            if (text.includes('sirope') || text.includes('jarabe') || text.includes('salsa') || text.includes('esencia') || text.includes('saborizante') || text.includes('vainilla') || text.includes('caramelo') || text.includes('avellana') || text.includes('puré')) return 'liquor'; // Botella estilo sirope
-            
-            // 5. Hielo y Bebidas Frías
-            if (text.includes('hielo') || text.includes('cold') || text.includes('frio') || text.includes('frío') || text.includes('frappe')) return 'ac_unit'; // Copo de nieve elegante
-            
-            // 6. Azúcar, Endulzantes y Polvos
-            if (text.includes('azucar') || text.includes('azúcar') || text.includes('endulzante') || text.includes('stevia') || text.includes('cacao') || text.includes('canela') || text.includes('polvo')) return 'grain'; // Partículas/Polvo
-            
-            // 7. Pastelería y Comida
-            if (text.includes('pasteleria') || text.includes('comida') || text.includes('alimento') || text.includes('galleta') || text.includes('pan') || text.includes('croissant') || text.includes('muffin') || text.includes('torta') || text.includes('postre') || text.includes('sandwich')) return 'bakery_dining';
-            
-            // 8. Vasos y Contenedores de Bebida
+            // 1. Vasos y Contenedores de Bebida
             if (text.includes('vaso') || text.includes('copa') || text.includes('mug') || text.includes('taza') || text.includes('botella')) return 'local_drink'; // Vaso con bombilla (Sleek)
             
-            // 9. Tapas, Bombillas y Desechables
+            // 2. Tapas, Bombillas y Desechables
             if (text.includes('tapa') || text.includes('bombilla') || text.includes('pajilla') || text.includes('fajilla') || text.includes('manga') || text.includes('revolvedor') || text.includes('servilleta') || text.includes('porta')) return 'takeout_dining';
             
-            // 10. Bolsas
+            // 3. Bolsas (Soluciona "Bolsas de café")
             if (text.includes('bolsa')) return 'shopping_bag';
             
-            // 11. Cajas y Empaques de Cartón
+            // 4. Cajas y Empaques de Cartón
             if (text.includes('caja') || text.includes('carton') || text.includes('cartón') || text.includes('empaque') || text.includes('packaging')) return 'inventory_2'; // Caja de cartón elegante
             
-            // 12. Limpieza y Aseo
-            if (text.includes('limpieza') || text.includes('aseo') || text.includes('cloro') || text.includes('detergente') || text.includes('jabon') || text.includes('jabón') || text.includes('basura') || text.includes('esponja') || text.includes('sanitizante') || text.includes('paño')) return 'sanitizer'; // Botella de spray (Minimalista)
-            
-            // 13. Equipamiento y Repuestos
+            // 5. Equipamiento y Repuestos
             if (text.includes('equipo') || text.includes('maquina') || text.includes('repuesto') || text.includes('filtro') || text.includes('herramienta') || text.includes('mantenimiento')) return 'handyman';
             
-            // 14. Merchandising
+            // 6. Limpieza y Aseo
+            if (text.includes('limpieza') || text.includes('aseo') || text.includes('cloro') || text.includes('detergente') || text.includes('jabon') || text.includes('jabón') || text.includes('basura') || text.includes('esponja') || text.includes('sanitizante') || text.includes('paño')) return 'sanitizer'; // Botella de spray (Minimalista)
+            
+            // 7. Merchandising
             if (text.includes('merchandising') || text.includes('ropa') || text.includes('polera') || text.includes('jockey') || text.includes('delantal') || text.includes('tote')) return 'checkroom'; // Percha de ropa elegante
             
-            // 15. Papelería y Oficina
+            // 8. Papelería y Oficina
             if (text.includes('papel') || text.includes('oficina') || text.includes('boleta') || text.includes('impresora') || text.includes('tinta') || text.includes('rollo') || text.includes('termico')) return 'receipt_long'; // Ticket / Boleta
+
+            // PRIORIDAD 2: INGREDIENTES Y ALIMENTOS
+            
+            // 9. Café, Granos y Espresso
+            if (text.includes('café') || text.includes('cafe') || text.includes('grano') || text.includes('espresso') || text.includes('decaf')) return 'coffee';
+            
+            // 10. Té, Matcha, Infusiones
+            if (text.includes('té') || text.includes('te ') || text.includes('matcha') || text.includes('chai') || text.includes('infusión') || text.includes('hoja')) return 'emoji_food_beverage';
+            
+            // 11. Leches y Lácteos (Animal o Vegetal)
+            if (text.includes('leche') || text.includes('lacteo') || text.includes('lácteo') || text.includes('avena') || text.includes('almendra') || text.includes('soya') || text.includes('entera') || text.includes('descremada')) return 'water_drop';
+            
+            // 12. Siropes, Salsas y Saborizantes
+            if (text.includes('sirope') || text.includes('jarabe') || text.includes('salsa') || text.includes('esencia') || text.includes('saborizante') || text.includes('vainilla') || text.includes('caramelo') || text.includes('avellana') || text.includes('puré')) return 'liquor'; // Botella estilo sirope
+            
+            // 13. Hielo y Bebidas Frías
+            if (text.includes('hielo') || text.includes('cold') || text.includes('frio') || text.includes('frío') || text.includes('frappe')) return 'ac_unit'; // Copo de nieve elegante
+            
+            // 14. Azúcar, Endulzantes y Polvos
+            if (text.includes('azucar') || text.includes('azúcar') || text.includes('endulzante') || text.includes('stevia') || text.includes('cacao') || text.includes('canela') || text.includes('polvo')) return 'grain'; // Partículas/Polvo
+            
+            // 15. Pastelería y Comida
+            if (text.includes('pasteleria') || text.includes('comida') || text.includes('alimento') || text.includes('galleta') || text.includes('pan') || text.includes('croissant') || text.includes('muffin') || text.includes('torta') || text.includes('postre') || text.includes('sandwich')) return 'bakery_dining';
             
             // Por defecto (Caja minimalista cerrada)
             return 'package_2'; 
