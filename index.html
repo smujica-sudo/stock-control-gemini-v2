@@ -305,7 +305,19 @@
                     groupedInventory[cat][subcat].push(m);
                 });
 
-                return { totalItems, criticalItems, criticalList, outOfStock, outOfStockList, getDaysLeft, groupedInventory };
+                // Cálculo de Métricas Consolidadas por Categoría
+                const categories = [...new Set(materiales.map(m => m.categoria || 'Sin Categoría'))];
+                const categoryStats = categories.map(cat => {
+                    const items = materiales.filter(m => (m.categoria || 'Sin Categoría') === cat);
+                    return {
+                        name: cat,
+                        total: items.length,
+                        critical: items.filter(m => (parseFloat(m.stock) || 0) <= (parseFloat(m.minimo) || 0) && (parseFloat(m.stock) || 0) > 0).length,
+                        outOfStock: items.filter(m => (parseFloat(m.stock) || 0) <= 0).length
+                    };
+                }).sort((a, b) => b.total - a.total); // Ordena de mayor a menor cantidad de ítems
+
+                return { totalItems, criticalItems, criticalList, outOfStock, outOfStockList, getDaysLeft, groupedInventory, categoryStats };
             }, [data]);
 
             const navigationData = useMemo(() => {
@@ -643,6 +655,38 @@
                                         <div className="p-6 bg-[#E8F0FE] rounded-[24px] border border-blue-100"><p className="text-xs font-bold text-blue-700 uppercase tracking-widest">Disponibilidad</p><p className="text-3xl font-black mt-2 text-blue-700">{Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%</p></div>
                                         <div className="p-6 bg-amber-50 rounded-[24px] border border-amber-100"><p className="text-xs font-bold text-amber-700 uppercase tracking-widest">Nivel Crítico</p><p className="text-3xl font-black mt-2 text-amber-700">{stats.criticalItems}</p></div>
                                         <div className="p-6 bg-red-50 rounded-[24px] border border-red-100"><p className="text-xs font-bold text-red-700 uppercase tracking-widest">Agotados</p><p className="text-3xl font-black mt-2 text-red-700">{stats.outOfStock}</p></div>
+                                    </div>
+
+                                    {/* NUEVA SECCIÓN: CONSOLIDADO POR CATEGORÍA */}
+                                    <div className="mb-12 avoid-break">
+                                        <div className="flex items-center gap-3 mb-6"><Icon name="pie_chart" className="text-[#202124]" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Métricas por Categoría</h3></div>
+                                        <div className="overflow-x-auto"><table className="w-full text-left print-table border-collapse border border-[#E0E0E0]"><thead className="bg-[#F8F9FA]"><tr><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0]">Categoría</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Ítems Registrados</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">En Riesgo (Críticos)</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Quiebre (Agotados)</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-right">Salud General</th></tr></thead>
+                                            <tbody>{stats.categoryStats.map((cat, i) => {
+                                                const health = Math.round(((cat.total - cat.outOfStock) / cat.total) * 100) || 0;
+                                                return (
+                                                    <tr key={i} className="border-b border-[#F1F3F4]">
+                                                        <td className="px-5 py-4">
+                                                            <div className="flex items-center gap-3">
+                                                                <Icon name={getItemIcon(cat.name)} size={20} className="text-[#5F6368]" />
+                                                                <span className="font-bold text-sm text-[#202124]">{cat.name}</span>
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-5 py-4 text-center font-bold text-[#5F6368]">{cat.total}</td>
+                                                        <td className="px-5 py-4 text-center">
+                                                            {cat.critical > 0 ? <span className="text-amber-600 font-bold bg-amber-50 px-3 py-1 rounded-lg">{cat.critical}</span> : <span className="text-[#BDC1C6]">-</span>}
+                                                        </td>
+                                                        <td className="px-5 py-4 text-center">
+                                                            {cat.outOfStock > 0 ? <span className="text-red-600 font-black bg-red-50 px-3 py-1 rounded-lg">{cat.outOfStock}</span> : <span className="text-[#BDC1C6]">-</span>}
+                                                        </td>
+                                                        <td className="px-5 py-4 text-right">
+                                                            <span className={`font-black text-sm ${health < 50 ? 'text-red-600' : health < 80 ? 'text-amber-600' : 'text-green-600'}`}>
+                                                                {health}%
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}</tbody>
+                                        </table></div>
                                     </div>
 
                                     {(stats.outOfStock > 0 || stats.criticalItems > 0) && (
