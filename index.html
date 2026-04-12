@@ -107,16 +107,48 @@
             );
         });
 
-        // --- INTELIGENCIA DE ICONOS POR CATEGORÍA ---
-        const getCategoryIcon = (categoryName) => {
-            const cat = (categoryName || '').toLowerCase();
-            if (cat.includes('café') || cat.includes('cafe') || cat.includes('grano')) return 'coffee_maker';
-            if (cat.includes('leche') || cat.includes('lacteo') || cat.includes('lácteo') || cat.includes('bebida')) return 'water_drop';
-            if (cat.includes('vaso') || cat.includes('tapa') || cat.includes('empaque') || cat.includes('packaging')) return 'takeout_dining';
-            if (cat.includes('sirope') || cat.includes('jarabe') || cat.includes('salsa')) return 'liquor';
-            if (cat.includes('limpieza') || cat.includes('aseo')) return 'cleaning_services';
-            if (cat.includes('pasteleria') || cat.includes('comida') || cat.includes('alimento') || cat.includes('galleta')) return 'bakery_dining';
-            return 'category'; // Icono por defecto (Cajas)
+        // --- INTELIGENCIA DE ÍCONOS (CATEGORÍAS, SUBCATEGORÍAS E ÍTEMS) ---
+        const getItemIcon = (categoria = '', subcategoria = '', nombre = '') => {
+            const text = `${categoria} ${subcategoria} ${nombre}`.toLowerCase();
+            
+            // 1. Café y Granos
+            if (text.includes('café') || text.includes('cafe') || text.includes('grano') || text.includes('espresso')) return 'coffee_maker';
+            
+            // 2. Té e Infusiones
+            if (text.includes('té') || text.includes('te ') || text.includes('matcha') || text.includes('chai') || text.includes('infusión')) return 'emoji_food_beverage';
+            
+            // 3. Leches y Lácteos (Animal o Vegetal)
+            if (text.includes('leche') || text.includes('lacteo') || text.includes('lácteo') || text.includes('avena') || text.includes('almendra') || text.includes('soya')) return 'water_drop';
+            
+            // 4. Siropes, Salsas y Saborizantes
+            if (text.includes('sirope') || text.includes('jarabe') || text.includes('salsa') || text.includes('esencia') || text.includes('saborizante')) return 'liquor';
+            
+            // 5. Pastelería y Comida
+            if (text.includes('pasteleria') || text.includes('comida') || text.includes('alimento') || text.includes('galleta') || text.includes('pan') || text.includes('croissant') || text.includes('muffin') || text.includes('torta') || text.includes('postre')) return 'bakery_dining';
+            
+            // 6. Vasos y Contenedores de Bebida
+            if (text.includes('vaso') || text.includes('copa') || text.includes('mug') || text.includes('taza')) return 'local_cafe';
+            
+            // 7. Tapas, Bombillas y Desechables
+            if (text.includes('tapa') || text.includes('bombilla') || text.includes('fajilla') || text.includes('manga') || text.includes('revolvedor') || text.includes('servilleta')) return 'takeout_dining';
+            
+            // 8. Empaques Generales y Bolsas
+            if (text.includes('bolsa') || text.includes('caja') || text.includes('empaque') || text.includes('packaging')) return 'shopping_bag';
+            
+            // 9. Limpieza y Aseo
+            if (text.includes('limpieza') || text.includes('aseo') || text.includes('cloro') || text.includes('detergente') || text.includes('jabon') || text.includes('jabón') || text.includes('basura') || text.includes('esponja')) return 'cleaning_services';
+            
+            // 10. Equipamiento y Repuestos
+            if (text.includes('equipo') || text.includes('maquina') || text.includes('repuesto') || text.includes('filtro') || text.includes('herramienta')) return 'build';
+            
+            // 11. Merchandising
+            if (text.includes('merchandising') || text.includes('ropa') || text.includes('polera') || text.includes('jockey') || text.includes('delantal') || text.includes('tote')) return 'checkroom';
+            
+            // 12. Papelería y Oficina
+            if (text.includes('papel') || text.includes('oficina') || text.includes('boleta') || text.includes('impresora') || text.includes('tinta')) return 'print';
+
+            // Por defecto (Icono elegante de caja)
+            return 'package_2'; 
         };
 
         // --- CONFIGURACIÓN BACKEND ---
@@ -407,8 +439,8 @@
                                                     <p className="text-red-100 text-sm mb-4">Los siguientes materiales requieren reposición inmediata:</p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {stats.outOfStockList.map(item => (
-                                                            <span key={item.id} className="bg-white/10 border border-white/20 px-3 py-1.5 rounded-lg text-xs font-bold backdrop-blur-sm flex items-center gap-1">
-                                                                <Icon name={getCategoryIcon(item.categoria)} size={14} /> {item.nombre}
+                                                            <span key={item.id} className="bg-white/10 border border-white/20 px-3 py-1.5 rounded-lg text-xs font-bold backdrop-blur-sm flex items-center gap-1.5">
+                                                                <Icon name={getItemIcon(item.categoria, item.subcategoria, item.nombre)} size={16} /> {item.nombre}
                                                             </span>
                                                         ))}
                                                     </div>
@@ -462,8 +494,8 @@
                                             <button onClick={() => { resetNav(); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1 ${!navPath.category ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}>
                                                 <Icon name="inventory_2" size={16} fill={!navPath.category} /> Bodega
                                             </button>
-                                            {navPath.category && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, subcategory:null, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1 ${navPath.category && !navPath.subcategory ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name={getCategoryIcon(navPath.category)} size={16} fill={navPath.category && !navPath.subcategory} /> {navPath.category}</button></>}
-                                            {navPath.subcategory && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors ${navPath.category && navPath.subcategory && !navPath.itemId ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}>{navPath.subcategory}</button></>}
+                                            {navPath.category && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, subcategory:null, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1.5 ${navPath.category && !navPath.subcategory ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category)} size={16} fill={navPath.category && !navPath.subcategory} /> {navPath.category}</button></>}
+                                            {navPath.subcategory && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1.5 ${navPath.category && navPath.subcategory && !navPath.itemId ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category, navPath.subcategory)} size={16} fill={navPath.category && navPath.subcategory && !navPath.itemId} /> {navPath.subcategory}</button></>}
                                             {navPath.itemId && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button className="px-5 py-2.5 bg-[#1a73e8] text-white rounded-full text-xs font-bold uppercase whitespace-nowrap shadow-md shadow-blue-200 flex items-center gap-1"><Icon name="info" size={16} fill /> Detalle</button></>}
                                         </div>
                                     )}
@@ -476,7 +508,7 @@
                                             <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 md:gap-8">
                                                 <div className="flex items-center gap-5 md:gap-6">
                                                     <div className={`w-20 h-20 md:w-24 md:h-24 rounded-[28px] md:rounded-[32px] flex items-center justify-center shrink-0 ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-red-600 text-white shadow-xl shadow-red-200' : 'bg-[#1a73e8] text-white shadow-xl shadow-blue-200'}`}>
-                                                        <Icon name={getCategoryIcon(navigationData.item.categoria)} size={40} fill />
+                                                        <Icon name={getItemIcon(navigationData.item.categoria, navigationData.item.subcategoria, navigationData.item.nombre)} size={44} fill />
                                                     </div>
                                                     <div>
                                                         <p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest mb-1 md:mb-2">{navigationData.item.categoria} / {navigationData.item.subcategoria || 'General'}</p>
@@ -511,7 +543,7 @@
                                             <div key={idx} onClick={() => { if (navigationData.level === 'categories') setNavPath({...navPath, category: item.name}); else setNavPath({...navPath, subcategory: item.name}); triggerHaptic(); }} className="gpu-accelerated bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-[#E0E0E0] hover:border-blue-400 hover:shadow-xl transition-all cursor-pointer group nav-card fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
                                                 <div className="flex justify-between items-start mb-6 md:mb-8">
                                                     <div className={`w-16 h-16 md:w-20 md:h-20 rounded-[24px] md:rounded-[28px] flex items-center justify-center transition-transform group-hover:scale-110 ${item.out > 0 ? 'bg-red-50 text-red-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}>
-                                                        <Icon name={navigationData.level === 'categories' ? getCategoryIcon(item.name) : "folder"} size={36} fill />
+                                                        <Icon name={navigationData.level === 'categories' ? getItemIcon(item.name) : getItemIcon(navPath.category, item.name)} size={36} fill />
                                                     </div>
                                                     {item.out > 0 && <span className="bg-red-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-black animate-pulse">Agotado</span>}
                                                 </div>
@@ -531,7 +563,7 @@
                                                         <div key={m.id} onClick={() => { setNavPath({...navPath, category: m.categoria, subcategory: m.subcategoria || 'General', itemId: m.id}); triggerHaptic(); }} className={`gpu-accelerated bg-white p-5 md:p-6 rounded-[32px] md:rounded-[40px] border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all cursor-pointer hover:shadow-xl group nav-card fade-in-up ${isOutOfStock ? 'border-red-300 bg-red-50/10' : isCritical ? 'border-amber-300' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${idx * 40}ms` }}>
                                                             <div className="flex items-center gap-5">
                                                                 <div className={`shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${isOutOfStock ? 'bg-red-600 text-white shadow-lg shadow-red-200' : isCritical ? 'bg-amber-100 text-amber-600' : 'bg-green-50 text-green-600'}`}>
-                                                                    <Icon name={getCategoryIcon(m.categoria)} size={28} fill />
+                                                                    <Icon name={getItemIcon(m.categoria, m.subcategoria, m.nombre)} size={32} fill />
                                                                 </div>
                                                                 <div>
                                                                     <p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest mb-0.5 line-clamp-1">{m.subcategoria || 'General'}</p>
@@ -604,7 +636,9 @@
                                         <div className="flex items-center gap-3 mb-8 border-b-2 border-[#202124] pb-4"><Icon name="category" className="text-[#202124]" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Inventario Completo</h3></div>
                                         {Object.keys(stats.groupedInventory).sort().map((categoria, idx) => (
                                             <div key={idx} className="mb-12 avoid-break">
-                                                <h4 className="text-base font-bold text-white bg-[#1a73e8] uppercase mb-4 px-4 py-2 rounded-xl flex items-center gap-2 w-max"><Icon name={getCategoryIcon(categoria)} size={18} /> {categoria}</h4>
+                                                <h4 className="text-base font-bold text-white bg-[#1a73e8] uppercase mb-4 px-4 py-2 rounded-xl flex items-center gap-2 w-max">
+                                                    <Icon name={getItemIcon(categoria)} size={20} fill /> {categoria}
+                                                </h4>
                                                 {Object.keys(stats.groupedInventory[categoria]).sort().map((subcategoria, sIdx) => (
                                                     <div key={sIdx} className="mb-8 ml-3 md:ml-6 border-l-2 border-[#E0E0E0] pl-4 md:pl-6">
                                                         <h5 className="text-xs md:text-sm font-bold text-[#5F6368] uppercase tracking-widest mb-4">{subcategoria}</h5>
