@@ -11,9 +11,8 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- Babel para JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
-    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
+    <!-- Google Material Symbols (Rounded) -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
@@ -23,10 +22,49 @@
             background-color: #F8F9FA;
             margin: 0;
             overflow-x: hidden;
+            color: #202124;
         }
 
+        .material-symbols-rounded {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            line-height: 1;
+            text-transform: none;
+            letter-spacing: normal;
+            word-wrap: normal;
+            white-space: nowrap;
+            direction: ltr;
+        }
+
+        /* Animaciones */
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
+        .animate-spin-custom { animation: spin 1.5s linear infinite; }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #f8f8f8 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: shimmer 1.5s infinite linear;
+        }
+
+        /* Animación de entrada escalonada */
+        .stagger-item {
+            opacity: 0;
+            transform: translateY(20px);
+            animation: fadeInUp 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         .loader-container {
             display: flex;
             flex-direction: column;
@@ -48,12 +86,20 @@
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        .shadow-google {
-            box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
-        }
+        .nav-card:active { transform: scale(0.97); }
+        .action-button:active { transform: scale(0.92); }
         
-        .nav-card:active {
-            transform: scale(0.98);
+        .glass-red {
+            background: rgba(220, 38, 38, 0.95);
+            backdrop-filter: blur(8px);
+        }
+
+        .sidebar-transition {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .main-transition {
+            transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
     </style>
 </head>
@@ -67,21 +113,19 @@
 
     <script type="text/babel">
         const { useState, useEffect, useMemo } = React;
-        
-        // Acceso global a iconos Lucide
-        const LucideIcons = window.LucideReact || {};
-        const { 
-            LayoutDashboard, Search, History, FileText, ChevronRight, 
-            ArrowUpCircle, ArrowDownCircle, SlidersHorizontal, RefreshCcw, 
-            Package, AlertTriangle, CheckCircle2, User, Lock, Plus, 
-            Download, ExternalLink, Loader2, PackageCheck, TrendingDown, 
-            Clock, Info, Filter, Home, AlertCircle, XCircle, ChevronLeft, Boxes
-        } = LucideIcons;
 
-        const Icon = ({ name: IconComponent, ...props }) => {
-            if (!IconComponent) return <span>📦</span>;
-            return <IconComponent {...props} />;
-        };
+        const Icon = ({ name, size = 24, className = "", spin = false, fill = false }) => (
+            <span 
+                className={`material-symbols-rounded ${className} ${spin ? 'animate-spin-custom' : ''}`} 
+                style={{ 
+                    fontSize: size, 
+                    fontVariationSettings: `'FILL' ${fill ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24`,
+                    verticalAlign: 'middle'
+                }}
+            >
+                {name}
+            </span>
+        );
 
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBj6qSh5Pq0C-NZA2CQ54KRwwVdDhBwFQLTObYterxQJ0DY67Jcdc-VzfnRiYwICGiBw/exec";
 
@@ -90,15 +134,20 @@
             const [user, setUser] = useState(null);
             const [pin, setPin] = useState('');
             const [data, setData] = useState({ materiales: [], movimientos: [], usuarios: [] });
-            const [error, setError] = useState(null);
             const [searchTerm, setSearchTerm] = useState('');
             const [isSyncing, setIsSyncing] = useState(false);
             const [modalType, setModalType] = useState(null); 
             const [selectedMaterial, setSelectedMaterial] = useState(null);
             const [isLoading, setIsLoading] = useState(false);
+            const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
+            const [navPath, setNavPath] = useState({ category: null, subcategory: null, itemId: null });
 
-            // Estados de navegación jerárquica
-            const [navPath, setNavPath] = useState({ category: null, subcategory: null });
+            // Función de Feedback Háptico
+            const triggerHaptic = () => {
+                if ('vibrate' in navigator) {
+                    navigator.vibrate([15, 30, 15]); // Patrón corto de éxito
+                }
+            };
 
             const fetchData = async () => {
                 if (!SCRIPT_URL) return;
@@ -108,11 +157,9 @@
                     const json = await response.json();
                     if (json && json.materiales) {
                         setData(json);
-                        setError(null);
                     }
                 } catch (e) {
                     console.error("Error sync:", e);
-                    setError("Error de conexión");
                 } finally {
                     setIsSyncing(false);
                 }
@@ -120,6 +167,12 @@
 
             useEffect(() => {
                 fetchData();
+                const handleResize = () => {
+                    if (window.innerWidth <= 1024) setIsSidebarOpen(false);
+                    else setIsSidebarOpen(true);
+                };
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
             }, []);
 
             const handleLogin = (e) => {
@@ -129,6 +182,7 @@
                 if (validUser) {
                     setUser(validUser);
                     setView('dashboard');
+                    triggerHaptic();
                 } else {
                     setPin('');
                     alert("PIN incorrecto");
@@ -151,7 +205,7 @@
                 };
 
                 const outOfStockList = materiales.filter(m => (parseFloat(m.stock) || 0) <= 0);
-                const criticalItemsCount = materiales.filter(m => {
+                const criticalCount = materiales.filter(m => {
                     const s = parseFloat(m.stock) || 0;
                     const mn = parseFloat(m.minimo) || 0;
                     return s <= mn && s > 0;
@@ -159,79 +213,83 @@
 
                 return { 
                     totalItems: materiales.length, 
-                    criticalItems: criticalItemsCount, 
+                    criticalItems: criticalCount, 
                     outOfStock: outOfStockList.length, 
                     outOfStockList, 
                     getDaysLeft 
                 };
             }, [data]);
 
-            // Lógica de filtrado jerárquico
             const navigationData = useMemo(() => {
                 const materiales = data.materiales || [];
-                
-                // Si hay búsqueda, ignorar jerarquía y mostrar todo lo que coincida
                 if (searchTerm) {
                     return { level: 'search', items: materiales.filter(m => 
                         (m.nombre || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
                         (m.categoria || "").toLowerCase().includes(searchTerm.toLowerCase())
                     )};
                 }
-
                 if (!navPath.category) {
-                    // Nivel 1: Categorías
                     const cats = [...new Set(materiales.map(m => m.categoria).filter(Boolean))];
                     const items = cats.map(name => {
                         const count = materiales.filter(m => m.categoria === name).length;
                         const out = materiales.filter(m => m.categoria === name && (parseFloat(m.stock) || 0) <= 0).length;
-                        return { name, count, out, type: 'category' };
+                        return { name, count, out };
                     });
                     return { level: 'categories', items };
                 }
-
                 if (!navPath.subcategory) {
-                    // Nivel 2: Subcategorías
-                    const subcats = [...new Set(materiales
-                        .filter(m => m.categoria === navPath.category)
-                        .map(m => m.subcategoria || 'General')
-                    )];
+                    const subcats = [...new Set(materiales.filter(m => m.categoria === navPath.category).map(m => m.subcategoria || 'General'))];
                     const items = subcats.map(name => {
                         const count = materiales.filter(m => m.categoria === navPath.category && (m.subcategoria || 'General') === name).length;
                         const out = materiales.filter(m => m.categoria === navPath.category && (m.subcategoria || 'General') === name && (parseFloat(m.stock) || 0) <= 0).length;
-                        return { name, count, out, type: 'subcategory' };
+                        return { name, count, out };
                     });
                     return { level: 'subcategories', items };
                 }
+                if (!navPath.itemId) {
+                    return { level: 'items', items: materiales.filter(m => m.categoria === navPath.category && (m.subcategoria || 'General') === navPath.subcategory) };
+                }
+                const item = materiales.find(m => m.id == navPath.itemId);
+                const itemMovs = (data.movimientos || []).filter(mov => mov.item_id == navPath.itemId);
+                return { level: 'detail', item, movements: itemMovs };
+            }, [data.materiales, data.movimientos, navPath, searchTerm]);
 
-                // Nivel 3: Ítems finales
-                const items = materiales.filter(m => 
-                    m.categoria === navPath.category && 
-                    (m.subcategoria || 'General') === navPath.subcategory
-                );
-                return { level: 'items', items };
+            const resetNav = () => setNavPath({ category: null, subcategory: null, itemId: null });
 
-            }, [data.materiales, navPath, searchTerm]);
+            // Componente de Carga Esqueleto (KPI)
+            const KPISkeleton = () => (
+                <div className="bg-white p-6 rounded-[32px] border border-[#E0E0E0] shadow-sm">
+                    <div className="w-12 h-12 rounded-2xl skeleton mb-4" />
+                    <div className="h-2 w-16 skeleton rounded-full mb-2" />
+                    <div className="h-6 w-24 skeleton rounded-full" />
+                </div>
+            );
+
+            // Componente de Carga Esqueleto (Lista)
+            const RowSkeleton = () => (
+                <div className="bg-white p-6 rounded-[32px] border border-[#E0E0E0] flex gap-5 items-center">
+                    <div className="w-16 h-16 rounded-3xl skeleton shrink-0" />
+                    <div className="flex-1 space-y-3">
+                        <div className="h-2 w-24 skeleton rounded-full" />
+                        <div className="h-4 w-48 skeleton rounded-full" />
+                        <div className="h-2 w-32 skeleton rounded-full" />
+                    </div>
+                </div>
+            );
 
             if (view === 'login') {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-6 bg-[#F8F9FA]">
                         <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-xl border border-[#E0E0E0] text-center">
                             <div className="w-20 h-20 bg-[#1a73e8] rounded-3xl mx-auto mb-8 flex items-center justify-center text-white shadow-lg rotate-3">
-                                <Icon name={PackageCheck} size={40} />
+                                <Icon name="inventory" size={40} fill />
                             </div>
-                            <h1 className="text-2xl font-bold mb-2">Kawas Coffee</h1>
+                            <h1 className="text-2xl font-bold mb-2 tracking-tight">Kawas Coffee</h1>
                             <p className="text-[#5F6368] text-sm mb-10">Bodega e Inventario</p>
                             <form onSubmit={handleLogin} className="space-y-6">
-                                <input 
-                                    type="password" 
-                                    maxLength={4}
-                                    placeholder="PIN"
-                                    value={pin}
-                                    onChange={e => setPin(e.target.value)}
-                                    className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] focus:ring-4 focus:ring-blue-100 outline-none border-2 border-transparent focus:border-blue-200"
-                                />
+                                <input type="password" maxLength={4} placeholder="PIN" value={pin} onChange={e => setPin(e.target.value)} className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] focus:ring-4 focus:ring-blue-100 outline-none border-2 border-transparent focus:border-blue-200" />
                                 <button disabled={isSyncing} className="w-full bg-[#1a73e8] text-white py-5 rounded-full font-bold shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-all active:scale-95 disabled:opacity-50">
-                                    {isSyncing ? "Entrando..." : "Ingresar"}
+                                    {isSyncing ? "Verificando..." : "Ingresar"}
                                 </button>
                             </form>
                         </div>
@@ -240,334 +298,220 @@
             }
 
             return (
-                <div className="flex flex-col lg:flex-row min-h-screen pb-24 lg:pb-0 bg-[#F8F9FA]">
-                    {/* Sidebar Desktop */}
-                    <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-[#E0E0E0] fixed h-full z-20">
-                        <div className="p-8">
-                            <div className="flex items-center gap-3 text-[#1a73e8]">
-                                <Icon name={PackageCheck} size={32} />
-                                <span className="font-bold text-xl tracking-tight">Kawas Stock</span>
-                            </div>
+                <div className="min-h-screen bg-[#F8F9FA] relative flex">
+                    {/* Drawer Overlay */}
+                    {isSidebarOpen && <div className="fixed inset-0 bg-black/20 backdrop-blur-[1px] z-30 lg:hidden" onClick={() => setIsSidebarOpen(false)}></div>}
+
+                    {/* Sidebar */}
+                    <aside className={`sidebar-transition fixed top-0 left-0 h-full bg-white border-r border-[#E0E0E0] z-40 flex flex-col ${isSidebarOpen ? 'w-64 translate-x-0' : 'w-0 lg:w-20 translate-x-[-100%] lg:translate-x-0'}`}>
+                        <div className="p-6 flex items-center gap-4 h-20 shrink-0">
+                            <div className="w-10 h-10 bg-[#1a73e8] rounded-xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-blue-100"><Icon name="package_2" size={24} fill /></div>
+                            <span className={`font-black text-xl tracking-tighter text-[#1a73e8] whitespace-nowrap transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0'}`}>Kawas Stock</span>
                         </div>
-                        <nav className="flex-1 px-4 space-y-2">
+                        <nav className="flex-1 px-3 space-y-1 pt-4">
                             {[
-                                { id: 'dashboard', label: 'Inicio', icon: Home },
-                                { id: 'inventory', label: 'Bodega', icon: Boxes },
-                                { id: 'history', label: 'Historial', icon: History },
-                                { id: 'reports', label: 'Reportes', icon: FileText },
+                                { id: 'dashboard', label: 'Inicio', icon: 'dashboard' },
+                                { id: 'inventory', label: 'Bodega', icon: 'inventory' },
+                                { id: 'history', label: 'Historial', icon: 'history' },
+                                { id: 'reports', label: 'Reportes', icon: 'description' },
                             ].map(item => (
-                                <button 
-                                    key={item.id}
-                                    onClick={() => { setView(item.id); setNavPath({category:null, subcategory:null}); setSearchTerm(''); }}
-                                    className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all ${view === item.id ? 'bg-[#E8F0FE] text-[#1a73e8] font-bold' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
-                                >
-                                    <Icon name={item.icon} size={20} /> {item.label}
+                                <button key={item.id} onClick={() => { setView(item.id); resetNav(); setSearchTerm(''); if(window.innerWidth <= 1024) setIsSidebarOpen(false); triggerHaptic(); }} className={`w-full flex items-center h-12 rounded-2xl transition-all relative group ${view === item.id ? 'bg-[#E8F0FE] text-[#1a73e8]' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}>
+                                    <div className="w-14 shrink-0 flex items-center justify-center"><Icon name={item.icon} size={22} fill={view === item.id} /></div>
+                                    <span className={`text-sm font-bold absolute left-14 whitespace-nowrap transition-opacity duration-200 ${isSidebarOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>{item.label}</span>
+                                    {view === item.id && !isSidebarOpen && <div className="absolute right-0 w-1.5 h-6 bg-[#1a73e8] rounded-l-full"></div>}
                                 </button>
                             ))}
                         </nav>
-                        <div className="p-6 border-t border-[#F1F3F4]">
-                            <div className="flex items-center gap-3 p-3 bg-[#F8F9FA] rounded-2xl">
-                                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">
-                                    {user?.nombre?.charAt(0)}
-                                </div>
-                                <div className="overflow-hidden">
-                                    <p className="text-xs font-bold truncate">{user?.nombre}</p>
-                                    <p className="text-[10px] text-[#5F6368] uppercase">{user?.rol}</p>
-                                </div>
+                        <div className="p-4 border-t border-[#F1F3F4] shrink-0">
+                            <div className={`flex items-center gap-3 p-2 bg-[#F8F9FA] rounded-2xl transition-all duration-300 ${!isSidebarOpen && 'justify-center'}`}>
+                                <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-xs uppercase shrink-0">{user?.nombre?.charAt(0)}</div>
+                                <div className={`overflow-hidden transition-all duration-200 ${isSidebarOpen ? 'w-full opacity-100' : 'w-0 opacity-0'}`}><p className="text-xs font-bold truncate leading-none">{user?.nombre}</p><p className="text-[9px] text-[#5F6368] uppercase mt-1 tracking-wider">{user?.rol}</p></div>
                             </div>
                         </div>
                     </aside>
 
-                    <main className="flex-1 lg:ml-64 p-4 lg:p-10">
-                        {view === 'dashboard' && (
-                            <div className="space-y-8 animate-in fade-in duration-500">
-                                <div className="flex justify-between items-end">
-                                    <div>
-                                        <h2 className="text-3xl font-bold tracking-tight">Panel de Control</h2>
-                                        <p className="text-[#5F6368]">Estado general de suministros Kawas.</p>
-                                    </div>
-                                    <button 
-                                        onClick={fetchData} 
-                                        disabled={isSyncing}
-                                        className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E0E0E0] rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"
-                                    >
-                                        <Icon name={RefreshCcw} size={18} className={isSyncing ? 'animate-spin text-blue-600' : ''} />
-                                        <span className="text-sm font-bold">Sincronizar</span>
-                                    </button>
-                                </div>
+                    {/* Content */}
+                    <main className={`main-transition flex-1 min-h-screen pb-24 lg:pb-10 ${isSidebarOpen ? 'lg:ml-64' : 'lg:ml-20'}`}>
+                        <header className="h-16 flex items-center px-4 md:px-8 sticky top-0 bg-[#F8F9FA]/80 backdrop-blur-md z-20">
+                            <button onClick={() => { setIsSidebarOpen(!isSidebarOpen); triggerHaptic(); }} className="p-3 hover:bg-[#E8EAED] rounded-full mr-4"><Icon name="menu" size={24} /></button>
+                            <h1 className="text-lg font-bold text-[#5F6368] hidden md:block uppercase tracking-widest text-[10px]">
+                                {view === 'dashboard' ? 'Panel de Control' : view === 'inventory' ? 'Bodega' : view === 'history' ? 'Historial' : 'Reportes'}
+                            </h1>
+                        </header>
 
-                                {stats.outOfStock > 0 && (
-                                    <div className="bg-red-600 text-white p-6 rounded-[32px] shadow-xl shadow-red-100">
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                                            <div className="flex items-start gap-4">
-                                                <div className="bg-white/20 p-3 rounded-2xl shrink-0">
-                                                    <Icon name={XCircle} size={32} />
-                                                </div>
-                                                <div>
-                                                    <h4 className="text-xl font-black uppercase tracking-tight">Acción Requerida</h4>
-                                                    <p className="text-red-100 text-sm mb-3">Hay {stats.outOfStock} materiales agotados:</p>
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {stats.outOfStockList.map(item => (
-                                                            <span key={item.id} className="bg-white/10 border border-white/20 px-3 py-1 rounded-lg text-xs font-bold">
-                                                                {item.nombre}
-                                                            </span>
-                                                        ))}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <button 
-                                                onClick={() => { setView('inventory'); setNavPath({category:null, subcategory:null}); }}
-                                                className="bg-white text-red-600 px-8 py-4 rounded-full font-black text-sm hover:bg-red-50 transition-all active:scale-95 shadow-lg shrink-0"
-                                            >
-                                                Ver en Bodega
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    {[
-                                        { label: 'Ítems Totales', val: stats.totalItems, icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
-                                        { label: 'Stock Crítico', val: stats.criticalItems, icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
-                                        { label: 'Agotados', val: stats.outOfStock, icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50' },
-                                        { label: 'Disponibilidad', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%`, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
-                                    ].map((kpi, i) => (
-                                        <div key={i} className="bg-white p-5 rounded-[28px] border border-[#E0E0E0] shadow-sm">
-                                            <div className={`w-10 h-10 ${kpi.bg} ${kpi.color} rounded-xl flex items-center justify-center mb-3`}>
-                                                <Icon name={kpi.icon} size={24} />
-                                            </div>
-                                            <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">{kpi.label}</p>
-                                            <p className="text-2xl font-black mt-1">{kpi.val}</p>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {view === 'inventory' && (
-                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-                                {/* Buscador y Breadcrumbs */}
-                                <div className="sticky top-0 z-10 bg-[#F8F9FA]/90 backdrop-blur-md pb-4 pt-2">
-                                    <div className="relative mb-4">
-                                        <Icon name={Search} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#5F6368]" size={24} />
-                                        <input 
-                                            type="text" 
-                                            placeholder="¿Qué buscas? (Búsqueda global instantánea)"
-                                            value={searchTerm}
-                                            onChange={e => setSearchTerm(e.target.value)}
-                                            className="w-full pl-14 pr-6 py-5 bg-white border border-[#E0E0E0] rounded-[30px] shadow-sm focus:ring-4 focus:ring-blue-100 outline-none text-lg font-medium transition-all"
-                                        />
+                        <div className="px-4 md:px-10 pb-10">
+                            {view === 'dashboard' && (
+                                <div className="space-y-8">
+                                    <div className="flex justify-between items-end">
+                                        <div><h2 className="text-3xl font-black tracking-tight">Hola, {user.nombre.split(' ')[0]}</h2><p className="text-[#5F6368]">Estado general de suministros.</p></div>
+                                        <button onClick={fetchData} className="flex items-center gap-2 px-4 py-2.5 bg-white border border-[#E0E0E0] rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"><Icon name="sync" size={20} className={isSyncing ? 'animate-spin-custom text-blue-600' : ''} /><span className="text-sm font-bold">Sincronizar</span></button>
                                     </div>
 
-                                    {!searchTerm && (
-                                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                                            <button 
-                                                onClick={() => setNavPath({category:null, subcategory:null})}
-                                                className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${!navPath.category ? 'bg-[#1a73e8] text-white' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}
-                                            >
-                                                Bodega
-                                            </button>
-                                            {navPath.category && (
-                                                <>
-                                                    <Icon name={ChevronRight} size={16} className="text-[#BDC1C6] shrink-0" />
-                                                    <button 
-                                                        onClick={() => setNavPath({...navPath, subcategory:null})}
-                                                        className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${navPath.category && !navPath.subcategory ? 'bg-[#1a73e8] text-white' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}
-                                                    >
-                                                        {navPath.category}
-                                                    </button>
-                                                </>
-                                            )}
-                                            {navPath.subcategory && (
-                                                <>
-                                                    <Icon name={ChevronRight} size={16} className="text-[#BDC1C6] shrink-0" />
-                                                    <button className="px-4 py-2 bg-[#1a73e8] text-white rounded-full text-sm font-bold whitespace-nowrap">
-                                                        {navPath.subcategory}
-                                                    </button>
-                                                </>
-                                            )}
+                                    {isSyncing && data.materiales.length === 0 ? (
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            {[1,2,3,4].map(i => <KPISkeleton key={i} />)}
                                         </div>
-                                    )}
-                                </div>
-
-                                {/* Grid Navegable */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                                    {/* Caso de Categorías o Subcategorías */}
-                                    {(navigationData.level === 'categories' || navigationData.level === 'subcategories') && (
-                                        navigationData.items.map((item, idx) => (
-                                            <div 
-                                                key={idx}
-                                                onClick={() => {
-                                                    if (navigationData.level === 'categories') setNavPath({...navPath, category: item.name});
-                                                    else setNavPath({...navPath, subcategory: item.name});
-                                                }}
-                                                className="bg-white p-6 rounded-[32px] border border-[#E0E0E0] hover:border-[#1a73e8] hover:shadow-xl transition-all cursor-pointer group nav-card"
-                                            >
-                                                <div className="flex justify-between items-start mb-6">
-                                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${item.out > 0 ? 'bg-red-50 text-red-600' : 'bg-[#F1F3F4] text-[#1a73e8] group-hover:bg-[#1a73e8] group-hover:text-white'}`}>
-                                                        <Icon name={Package} size={28} />
-                                                    </div>
-                                                    {item.out > 0 && <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black animate-pulse">{item.out} AGOTADOS</span>}
+                                    ) : (
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            {[
+                                                { label: 'Ítems Totales', val: stats.totalItems, icon: 'inventory_2', color: 'text-blue-600', bg: 'bg-blue-50' },
+                                                { label: 'Stock Crítico', val: stats.criticalItems, icon: 'warning', color: 'text-amber-600', bg: 'bg-amber-50' },
+                                                { label: 'Agotados', val: stats.outOfStock, icon: 'trending_down', color: 'text-red-600', bg: 'bg-red-50' },
+                                                { label: 'Nivel Óptimo', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%`, icon: 'check_circle', color: 'text-green-600', bg: 'bg-green-50' },
+                                            ].map((kpi, i) => (
+                                                <div key={i} className="bg-white p-6 rounded-[32px] border border-[#E0E0E0] shadow-sm stagger-item" style={{ animationDelay: `${i * 100}ms` }}>
+                                                    <div className={`w-12 h-12 ${kpi.bg} ${kpi.color} rounded-2xl flex items-center justify-center mb-4`}><Icon name={kpi.icon} size={26} fill /></div>
+                                                    <p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest">{kpi.label}</p>
+                                                    <p className="text-2xl font-black mt-1">{kpi.val}</p>
                                                 </div>
-                                                <h4 className="text-xl font-bold mb-1 group-hover:text-[#1a73e8] transition-colors">{item.name}</h4>
-                                                <p className="text-sm text-[#5F6368]">{item.count} materiales registrados</p>
-                                                <div className="mt-6 flex items-center gap-1 text-[#1a73e8] font-bold text-xs">
-                                                    Entrar <Icon name={ChevronRight} size={14} />
-                                                </div>
-                                            </div>
-                                        ))
-                                    )}
-
-                                    {/* Caso de Ítems (Nivel final o búsqueda) */}
-                                    {(navigationData.level === 'items' || navigationData.level === 'search') && (
-                                        <div className="col-span-full grid grid-cols-1 gap-4">
-                                            {navigationData.items.map(m => {
-                                                const days = stats.getDaysLeft(m.id, m.stock);
-                                                const isCritical = m.stock <= m.minimo && m.stock > 0;
-                                                const isOutOfStock = (parseFloat(m.stock) || 0) <= 0;
-                                                return (
-                                                    <div key={m.id} className={`bg-white p-6 rounded-[32px] border flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all ${isOutOfStock ? 'border-red-400 bg-red-50/10 shadow-lg' : isCritical ? 'border-amber-300' : 'border-[#E0E0E0]'}`}>
-                                                        <div className="flex items-center gap-5">
-                                                            <div className={`relative w-16 h-16 rounded-2xl flex items-center justify-center ${isOutOfStock ? 'bg-red-600 text-white' : isCritical ? 'bg-amber-100 text-amber-600' : 'bg-green-50 text-green-600'}`}>
-                                                                <Icon name={Package} size={32} />
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">{m.subcategoria || 'General'} {isOutOfStock && '• AGOTADO'}</p>
-                                                                <h4 className={`text-xl font-bold ${isOutOfStock ? 'text-red-700' : 'text-[#202124]'}`}>{m.nombre}</h4>
-                                                                <p className="text-xs text-[#5F6368] font-medium mt-1">Ref: {m.id} • Min: {m.minimo} {m.unidad}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-8 px-4 text-center">
-                                                            <div>
-                                                                <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-tighter">Stock</p>
-                                                                <p className={`text-2xl font-black ${isOutOfStock ? 'text-red-600 animate-pulse' : isCritical ? 'text-amber-600' : 'text-[#202124]'}`}>{parseFloat(m.stock).toLocaleString()}</p>
-                                                            </div>
-                                                            <div>
-                                                                <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-tighter">Alcance</p>
-                                                                <p className="text-2xl font-black text-[#1a73e8]">{isOutOfStock ? '0' : days} <span className="text-[10px]">días</span></p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-2">
-                                                            <button onClick={() => { setSelectedMaterial(m); setModalType('IN'); }} className="flex-1 md:flex-none p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all"><Icon name={Plus} size={24}/></button>
-                                                            <button disabled={isOutOfStock} onClick={() => { setSelectedMaterial(m); setModalType('OUT'); }} className={`flex-1 md:flex-none p-4 rounded-2xl transition-all ${isOutOfStock ? 'bg-gray-100 text-gray-300' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name={TrendingDown} size={24}/></button>
-                                                            <button onClick={() => { setSelectedMaterial(m); setModalType('ADJUST'); }} className="flex-1 md:flex-none p-4 bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-700 hover:text-white transition-all"><Icon name={SlidersHorizontal} size={24}/></button>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                        )}
-
-                        {view === 'history' && (
-                            <div className="bg-white rounded-[32px] border border-[#E0E0E0] overflow-hidden shadow-sm animate-in fade-in duration-500">
-                                <div className="p-8 border-b border-[#F1F3F4] flex items-center justify-between">
-                                    <div className="flex items-center gap-3"><Icon name={History} className="text-blue-600" size={24}/><h3 className="text-xl font-bold tracking-tight">Bitácora de Movimientos</h3></div>
-                                    <button onClick={fetchData} className="p-2 hover:bg-[#F1F3F4] rounded-full transition-colors"><Icon name={RefreshCcw} size={20}/></button>
-                                </div>
-                                <div className="overflow-x-auto no-scrollbar">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-[#F8F9FA] text-[#5F6368] text-[10px] uppercase font-black tracking-widest">
-                                            <tr><th className="px-8 py-5">Fecha</th><th className="px-8 py-5">Tipo</th><th className="px-8 py-5">Material</th><th className="px-8 py-5 text-right">Saldo</th></tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-[#F1F3F4]">
-                                            {(data.movimientos || []).slice().reverse().map((m, i) => (
-                                                <tr key={i} className="hover:bg-[#F8F9FA] transition-colors">
-                                                    <td className="px-8 py-5">
-                                                        <p className="text-sm font-bold">{new Date(m.timestamp).toLocaleDateString()}</p>
-                                                        <p className="text-[9px] uppercase text-[#5F6368]">{m.usuario}</p>
-                                                    </td>
-                                                    <td className="px-8 py-5"><span className={`px-3 py-1 rounded-full text-[9px] font-black ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{m.tipo}</span></td>
-                                                    <td className="px-8 py-5 text-sm font-bold">{m.item_nombre}</td>
-                                                    <td className="px-8 py-5 text-right"><p className={`text-sm font-black ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{parseFloat(m.diferencia) > 0 ? '+' : ''}{m.diferencia}</p><p className="text-[10px] font-bold text-[#5F6368]">Final: {m.stock_nuevo}</p></td>
-                                                </tr>
                                             ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
+                                        </div>
+                                    )}
 
-                        {view === 'reports' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in duration-500">
-                                <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group hover:shadow-xl transition-all">
-                                    <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6"><Icon name={FileText} size={40} /></div>
-                                    <h3 className="text-2xl font-bold mb-4 tracking-tight">Stock PDF</h3>
-                                    <button onClick={() => window.print()} className="w-full py-5 bg-[#F1F3F4] text-[#202124] rounded-full font-bold hover:bg-[#E0E0E0] transition-all flex items-center justify-center gap-2">Descargar PDF</button>
+                                    {stats.outOfStock > 0 && (
+                                        <div className="glass-red text-white p-7 rounded-[32px] shadow-2xl shadow-red-100 animate-in slide-in-from-top-4">
+                                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+                                                <div className="flex items-start gap-5">
+                                                    <div className="bg-white/20 p-4 rounded-3xl shrink-0 animate-pulse"><Icon name="error" size={36} fill /></div>
+                                                    <div><h4 className="text-2xl font-black uppercase tracking-tighter">Stock Agotado</h4><p className="text-red-50 text-sm mb-4">Atención inmediata requerida:</p>
+                                                        <div className="flex flex-wrap gap-2">{stats.outOfStockList.map(item => (<button key={item.id} onClick={() => { setView('inventory'); setNavPath({category: item.categoria, subcategory: item.subcategoria || 'General', itemId: item.id}); }} className="bg-white/10 border border-white/20 px-4 py-1.5 rounded-xl text-[11px] font-black backdrop-blur-md hover:bg-white/20 transition-all">{item.nombre}</button>))}</div>
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => { setView('inventory'); resetNav(); }} className="bg-white text-red-600 px-10 py-4 rounded-full font-black text-sm hover:bg-red-50 transition-all shadow-lg shrink-0">Ver Detalles</button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group hover:shadow-xl transition-all">
-                                    <div className="w-20 h-20 bg-green-50 text-green-600 rounded-3xl flex items-center justify-center mx-auto mb-6"><Icon name={ExternalLink} size={40} /></div>
-                                    <h3 className="text-2xl font-bold mb-4 tracking-tight">Excel Google Drive</h3>
-                                    <button onClick={() => window.open('https://docs.google.com/spreadsheets/d/1oZiefz32aCVb0iBGnfQ5drzZKvk94HVCbWcgZleIKlg/edit', '_blank')} className="w-full py-5 bg-[#1a73e8] text-white rounded-full font-bold shadow-xl hover:bg-[#1557b0] transition-all flex items-center justify-center gap-2">Abrir Planilla</button>
+                            )}
+
+                            {view === 'inventory' && (
+                                <div className="space-y-6">
+                                    <div className="sticky top-16 z-10 bg-[#F8F9FA]/90 backdrop-blur-md pb-4 pt-2">
+                                        <div className="relative mb-5 group">
+                                            <Icon name="search" className="absolute left-6 top-1/2 -translate-y-1/2 text-[#5F6368] group-focus-within:text-blue-600 transition-colors" size={24} />
+                                            <input type="text" placeholder="Buscar en toda la bodega..." value={searchTerm} onChange={e => { setSearchTerm(e.target.value); if(e.target.value) setNavPath({category:null, subcategory:null, itemId:null}); }} className="w-full pl-16 pr-6 py-5 bg-white border border-[#E0E0E0] rounded-[30px] shadow-sm focus:ring-4 focus:ring-blue-100 outline-none text-lg font-semibold transition-all" />
+                                        </div>
+                                        {!searchTerm && (
+                                            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-1">
+                                                <button onClick={() => { resetNav(); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all ${!navPath.category ? 'bg-[#1a73e8] text-white shadow-lg shadow-blue-100' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}>BODEGA</button>
+                                                {navPath.category && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, subcategory:null, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all ${navPath.category && !navPath.subcategory ? 'bg-[#1a73e8] text-white shadow-lg shadow-blue-100' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}>{navPath.category.toUpperCase()}</button></>}
+                                                {navPath.subcategory && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all ${navPath.category && navPath.subcategory && !navPath.itemId ? 'bg-[#1a73e8] text-white shadow-lg shadow-blue-100' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}>{navPath.subcategory.toUpperCase()}</button></>}
+                                                {navPath.itemId && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button className="px-5 py-2.5 bg-[#1a73e8] text-white rounded-full text-xs font-black whitespace-nowrap shadow-lg shadow-blue-100 uppercase">Detalle Ítem</button></>}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {isSyncing && navigationData.level !== 'detail' ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {[1,2,3,4,5,6].map(i => <RowSkeleton key={i} />)}
+                                        </div>
+                                    ) : navigationData.level === 'detail' ? (
+                                        <div className="fade-in-up space-y-6 pb-10">
+                                            <div className="bg-white rounded-[40px] border border-[#E0E0E0] p-8 md:p-10 shadow-sm relative overflow-hidden stagger-item">
+                                                <div className="flex flex-col md:flex-row md:items-start justify-between gap-8">
+                                                    <div className="flex items-center gap-6">
+                                                        <div className={`w-20 h-20 rounded-[28px] flex items-center justify-center ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-red-600 text-white shadow-xl shadow-red-100' : 'bg-blue-600 text-white shadow-xl shadow-blue-100'}`}><Icon name="package_2" size={40} fill /></div>
+                                                        <div><p className="text-xs font-black text-[#5F6368] uppercase tracking-widest mb-1">{navigationData.item.categoria} / {navigationData.item.subcategoria || 'General'}</p><h3 className="text-3xl md:text-4xl font-black tracking-tighter leading-none">{navigationData.item.nombre}</h3><div className="flex items-center gap-4 mt-4"><span className="text-sm font-bold bg-[#F1F3F4] px-4 py-1.5 rounded-full">Ref: {navigationData.item.id}</span><span className="text-sm font-bold bg-[#F1F3F4] px-4 py-1.5 rounded-full">Min: {navigationData.item.minimo} {navigationData.item.unidad}</span></div></div>
+                                                    </div>
+                                                    <div className="flex gap-3 shrink-0">
+                                                        <button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('IN'); triggerHaptic(); }} className="action-button flex flex-col items-center gap-1 p-4 bg-green-50 text-green-700 rounded-[24px] hover:bg-green-600 hover:text-white transition-all min-w-[90px]"><Icon name="add_circle" size={32} fill /><span className="text-[10px] font-black uppercase">Ingresar</span></button>
+                                                        <button disabled={parseFloat(navigationData.item.stock) <= 0} onClick={() => { setSelectedMaterial(navigationData.item); setModalType('OUT'); triggerHaptic(); }} className={`action-button flex flex-col items-center gap-1 p-4 rounded-[24px] transition-all min-w-[90px] ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-gray-100 text-gray-300' : 'bg-red-50 text-red-700 hover:bg-red-600 hover:text-white'}`}><Icon name="remove_circle" size={32} fill /><span className="text-[10px] font-black uppercase">Consumir</span></button>
+                                                        <button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('ADJUST'); triggerHaptic(); }} className="action-button flex flex-col items-center gap-1 p-4 bg-gray-100 text-[#5F6368] rounded-[24px] hover:bg-gray-700 hover:text-white transition-all min-w-[90px]"><Icon name="tune" size={32} /><span className="text-[10px] font-black uppercase">Ajustar</span></button>
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mt-12 border-t border-[#F1F3F4] pt-8">
+                                                    <div className="bg-[#F8F9FA] p-6 rounded-[28px] border border-[#F1F3F4]"><p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest mb-2">Stock Disponible</p><p className={`text-5xl font-black ${parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600 animate-pulse' : 'text-[#202124]'}`}>{parseFloat(navigationData.item.stock).toLocaleString()} <span className="text-base font-bold text-[#5F6368]">{navigationData.item.unidad}</span></p></div>
+                                                    <div className="bg-[#F8F9FA] p-6 rounded-[28px] border border-[#F1F3F4]"><p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest mb-2">Alcance Estimado</p><p className="text-5xl font-black text-[#1a73e8]">{stats.getDaysLeft(navigationData.item.id, navigationData.item.stock)} <span className="text-base font-bold text-[#5F6368]">días</span></p></div>
+                                                    <div className="bg-[#F8F9FA] p-6 rounded-[28px] border border-[#F1F3F4]"><p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest mb-2">Estado Salud</p><div className="flex items-center gap-3"><Icon name={parseFloat(navigationData.item.stock) <= 0 ? 'error' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'warning' : 'check_circle'} size={40} className={parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'text-amber-600' : 'text-green-600'} fill /><p className="text-xl font-black uppercase">{parseFloat(navigationData.item.stock) <= 0 ? 'Sin Stock' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'Crítico' : 'Óptimo'}</p></div></div>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white rounded-[40px] border border-[#E0E0E0] overflow-hidden stagger-item" style={{ animationDelay: '200ms' }}><div className="p-8 border-b border-[#F1F3F4] flex items-center gap-3"><Icon name="history" className="text-blue-600" size={24} /><h4 className="text-xl font-black tracking-tight">Movimientos Recientes</h4></div>
+                                                <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left"><thead className="bg-[#F8F9FA] text-[#5F6368] text-[10px] font-black uppercase tracking-widest"><tr><th className="px-8 py-5">Fecha</th><th className="px-8 py-5">Tipo</th><th className="px-8 py-5 text-right">Variación</th><th className="px-8 py-5 text-right">Nuevo Saldo</th></tr></thead>
+                                                    <tbody className="divide-y divide-[#F1F3F4]">{navigationData.movements.length > 0 ? navigationData.movements.slice().reverse().slice(0, 10).map((m, i) => (<tr key={i} className="hover:bg-[#F8F9FA] transition-colors"><td className="px-8 py-5"><p className="text-sm font-black">{new Date(m.timestamp).toLocaleDateString()}</p><p className="text-[9px] uppercase font-bold text-[#5F6368]">{m.usuario}</p></td><td className="px-8 py-5"><span className={`px-3 py-1.5 rounded-xl text-[9px] font-black ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{m.tipo}</span></td><td className={`px-8 py-5 text-right text-sm font-black ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{parseFloat(m.diferencia) > 0 ? '+' : ''}{m.diferencia}</td><td className="px-8 py-5 text-right text-sm font-black text-[#202124]">{m.stock_nuevo}</td></tr>)) : (<tr><td colSpan="4" className="px-8 py-20 text-center text-[#5F6368] font-medium">No hay movimientos registrados para este ítem.</td></tr>)}</tbody>
+                                                </table></div>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                            {(navigationData.level === 'categories' || navigationData.level === 'subcategories') && (
+                                                navigationData.items.map((item, idx) => (
+                                                    <div key={idx} onClick={() => { if (navigationData.level === 'categories') setNavPath({...navPath, category: item.name}); else setNavPath({...navPath, subcategory: item.name}); triggerHaptic(); }} className="bg-white p-7 rounded-[40px] border border-[#E0E0E0] hover:border-[#1a73e8] hover:shadow-2xl transition-all cursor-pointer group nav-card stagger-item" style={{ animationDelay: `${idx * 50}ms` }}>
+                                                        <div className="flex justify-between items-start mb-8"><div className={`w-16 h-16 rounded-3xl flex items-center justify-center transition-all ${item.out > 0 ? 'bg-red-50 text-red-600' : 'bg-[#F1F3F4] text-[#1a73e8] group-hover:bg-[#1a73e8] group-hover:text-white group-hover:rotate-6'}`}><Icon name="inventory" size={32} fill /></div>{item.out > 0 && <span className="bg-red-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-black animate-pulse uppercase tracking-wider">Agotado</span>}</div>
+                                                        <h4 className="text-xl font-black mb-2 group-hover:text-[#1a73e8] transition-colors leading-tight">{item.name}</h4><p className="text-sm text-[#5F6368] font-medium">{item.count} materiales</p>
+                                                        <div className="mt-8 flex items-center gap-2 text-[#1a73e8] font-black text-xs uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity">Explorar <Icon name="arrow_forward" size={16} /></div>
+                                                    </div>
+                                                ))
+                                            )}
+                                            {(navigationData.level === 'items' || navigationData.level === 'search') && (
+                                                <div className="col-span-full grid grid-cols-1 gap-4">
+                                                    {navigationData.items.map((m, idx) => {
+                                                        const isCritical = m.stock <= m.minimo && m.stock > 0;
+                                                        const isOutOfStock = (parseFloat(m.stock) || 0) <= 0;
+                                                        return (
+                                                            <div key={m.id} onClick={() => { setNavPath({...navPath, category: m.categoria, subcategory: m.subcategoria || 'General', itemId: m.id}); triggerHaptic(); }} className={`bg-white p-6 rounded-[32px] border flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all cursor-pointer hover:shadow-xl group stagger-item ${isOutOfStock ? 'border-red-400 bg-red-50/5' : isCritical ? 'border-amber-300 shadow-sm' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${idx * 50}ms` }}>
+                                                                <div className="flex items-center gap-5"><div className={`relative w-16 h-16 rounded-3xl flex items-center justify-center transition-transform group-hover:scale-105 ${isOutOfStock ? 'bg-red-600 text-white shadow-lg' : isCritical ? 'bg-amber-100 text-amber-600' : 'bg-green-50 text-green-600'}`}><Icon name="package_2" size={32} fill /></div><div><p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest mb-0.5">{m.subcategoria || 'General'}</p><h4 className={`text-xl font-black tracking-tight ${isOutOfStock ? 'text-red-700' : 'text-[#202124]'}`}>{m.nombre}</h4><p className="text-[11px] text-[#5F6368] font-bold">Ver ficha de producto</p></div></div>
+                                                                <div className="flex gap-10 px-4 text-center"><div><p className="text-[10px] font-black text-[#5F6368] uppercase tracking-tighter mb-1">Stock</p><p className={`text-2xl font-black ${isOutOfStock ? 'text-red-600' : isCritical ? 'text-amber-600' : 'text-[#202124]'}`}>{parseFloat(m.stock).toLocaleString()}</p></div><div className="hidden md:block"><p className="text-[10px] font-black text-[#5F6368] uppercase tracking-tighter mb-1">Unidad</p><p className="text-sm font-bold text-[#5F6368] mt-1">{m.unidad}</p></div></div>
+                                                                <div className="flex items-center text-[#1a73e8]"><Icon name="arrow_forward_ios" size={20} /></div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                            </div>
-                        )}
+                            )}
+
+                            {view === 'history' && (
+                                <div className="bg-white rounded-[40px] border border-[#E0E0E0] overflow-hidden shadow-sm stagger-item">
+                                    <div className="p-8 border-b border-[#F1F3F4] flex items-center justify-between"><div className="flex items-center gap-3"><Icon name="history" className="text-blue-600" size={26}/><h3 className="text-xl font-black tracking-tight">Bitácora de Movimientos</h3></div><button onClick={() => { fetchData(); triggerHaptic(); }} className="p-2.5 hover:bg-[#F1F3F4] rounded-full transition-colors"><Icon name="refresh" size={22}/></button></div>
+                                    <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left"><thead className="bg-[#F8F9FA] text-[#5F6368] text-[10px] font-black uppercase tracking-widest"><tr><th className="px-8 py-6">Fecha</th><th className="px-8 py-6">Tipo</th><th className="px-8 py-6">Material</th><th className="px-8 py-6 text-right">Saldo</th></tr></thead><tbody className="divide-y divide-[#F1F3F4]">{(data.movimientos || []).slice().reverse().slice(0, 50).map((m, i) => (<tr key={i} className="hover:bg-[#F8F9FA] transition-colors"><td className="px-8 py-6"><p className="text-sm font-black">{new Date(m.timestamp).toLocaleDateString()}</p><p className="text-[10px] uppercase font-bold text-[#5F6368]">{m.usuario}</p></td><td className="px-8 py-6"><span className={`px-3 py-1.5 rounded-xl text-[10px] font-black ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{m.tipo}</span></td><td className="px-8 py-6 text-sm font-black">{m.item_nombre}</td><td className="px-8 py-6 text-right"><p className={`text-sm font-black ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{parseFloat(m.diferencia) > 0 ? '+' : ''}{m.diferencia}</p><p className="text-[10px] font-bold text-[#5F6368]">Stock: {m.stock_nuevo}</p></td></tr>))}</tbody></table></div>
+                                </div>
+                            )}
+
+                            {view === 'reports' && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="bg-white p-12 rounded-[48px] border border-[#E0E0E0] text-center group hover:shadow-2xl transition-all stagger-item" style={{ animationDelay: '0ms' }}><div className="w-24 h-24 bg-red-50 text-red-600 rounded-[32px] flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform"><Icon name="description" size={48} fill /></div><h3 className="text-2xl font-black mb-4">Stock en PDF</h3><button onClick={() => { window.print(); triggerHaptic(); }} className="w-full py-5 bg-[#F1F3F4] text-[#202124] rounded-full font-black hover:bg-[#E0E0E0] transition-all flex items-center justify-center gap-2">Descargar PDF</button></div>
+                                    <div className="bg-white p-12 rounded-[48px] border border-[#E0E0E0] text-center group hover:shadow-2xl transition-all stagger-item" style={{ animationDelay: '100ms' }}><div className="w-24 h-24 bg-green-50 text-green-600 rounded-[32px] flex items-center justify-center mx-auto mb-8 group-hover:scale-110 transition-transform"><Icon name="database" size={48} fill /></div><h3 className="text-2xl font-black mb-4">Base de Datos</h3><button onClick={() => { window.open('https://docs.google.com/spreadsheets/d/1oZiefz32aCVb0iBGnfQ5drzZKvk94HVCbWcgZleIKlg/edit', '_blank'); triggerHaptic(); }} className="w-full py-5 bg-[#1a73e8] text-white rounded-full font-black shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-all flex items-center justify-center gap-2 tracking-wide">Abrir Sheets</button></div>
+                                </div>
+                            )}
+                        </div>
                     </main>
 
-                    {/* Footer Nav Mobile */}
-                    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] px-4 py-4 z-40 flex justify-around items-center rounded-t-[30px] shadow-2xl">
+                    {/* Bottom Nav Mobile */}
+                    <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] px-4 py-4 z-40 flex justify-around items-center rounded-t-[32px] shadow-2xl">
                         {[
-                            { id: 'dashboard', icon: LayoutDashboard, label: 'Inicio' },
-                            { id: 'inventory', icon: Boxes, label: 'Bodega' },
-                            { id: 'history', icon: History, label: 'Bitácora' },
-                            { id: 'reports', icon: FileText, label: 'Reportes' },
+                            { id: 'dashboard', icon: 'dashboard', label: 'Inicio' },
+                            { id: 'inventory', icon: 'inventory', label: 'Bodega' },
+                            { id: 'history', icon: 'history', label: 'Bitácora' },
+                            { id: 'reports', icon: 'analytics', label: 'Reportes' },
                         ].map(item => (
-                            <button 
-                                key={item.id} 
-                                onClick={() => { setView(item.id); setNavPath({category:null, subcategory:null}); setSearchTerm(''); }} 
-                                className={`flex flex-col items-center gap-1 p-2 transition-all ${view === item.id ? 'text-blue-600' : 'text-[#BDC1C6]'}`}
-                            >
-                                <div className={`p-2 px-6 rounded-full ${view === item.id ? 'bg-blue-50' : ''}`}><Icon name={item.icon} size={24} /></div>
-                                <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
+                            <button key={item.id} onClick={() => { setView(item.id); resetNav(); setSearchTerm(''); triggerHaptic(); }} className={`flex flex-col items-center gap-1.5 p-2 transition-all ${view === item.id ? 'text-blue-600' : 'text-[#BDC1C6]'}`}>
+                                <div className={`p-2.5 px-7 rounded-full transition-all ${view === item.id ? 'bg-blue-50' : ''}`}><Icon name={item.icon} size={26} fill={view === item.id} /></div>
+                                <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
                             </button>
                         ))}
                     </nav>
 
-                    {/* Modal Movimientos */}
+                    {/* Modal Transacciones */}
                     {modalType && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
                             <div className="absolute inset-0 bg-[#202124]/40 backdrop-blur-sm animate-in fade-in" onClick={() => !isLoading && setModalType(null)}></div>
-                            <div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl z-10 overflow-hidden animate-in zoom-in-95 border border-[#E0E0E0]">
+                            <div className="bg-white w-full max-w-sm rounded-[44px] shadow-2xl z-10 overflow-hidden animate-in zoom-in-95 border border-[#E0E0E0]">
                                 <div className={`p-8 text-white ${modalType === 'IN' ? 'bg-green-600' : modalType === 'OUT' ? 'bg-red-600' : 'bg-gray-800'}`}>
-                                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Registrar {modalType}</p>
-                                    <h3 className="text-2xl font-bold leading-tight">{selectedMaterial?.nombre}</h3>
+                                    <div className="flex justify-between items-start"><div><p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Registrar {modalType}</p><h3 className="text-2xl font-black leading-tight tracking-tight">{selectedMaterial?.nombre}</h3></div><div className="p-3 bg-white/20 rounded-2xl"><Icon name={modalType === 'IN' ? 'add_circle' : modalType === 'OUT' ? 'do_not_disturb_on' : 'settings_suggest'} size={32} fill /></div></div>
                                 </div>
-                                <form className="p-8 space-y-6" onSubmit={async (e) => {
-                                    e.preventDefault();
-                                    setIsLoading(true);
+                                <form className="p-9 space-y-7" onSubmit={async (e) => {
+                                    e.preventDefault(); setIsLoading(true);
                                     try {
-                                        await fetch(SCRIPT_URL, {
-                                            method: 'POST',
-                                            mode: 'no-cors',
-                                            body: JSON.stringify({
-                                                action: 'movimiento',
-                                                usuario: user.nombre,
-                                                tipo: modalType,
-                                                materialId: selectedMaterial.id,
-                                                cantidad: e.target.cantidad.value,
-                                                nota: e.target.nota.value
-                                            })
-                                        });
-                                        setModalType(null);
-                                        setTimeout(fetchData, 1500);
+                                        await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'movimiento', usuario: user.nombre, tipo: modalType, materialId: selectedMaterial.id, cantidad: e.target.cantidad.value, nota: e.target.nota.value }) });
+                                        triggerHaptic(); // Feedback táctil al confirmar éxito
+                                        setModalType(null); setTimeout(fetchData, 1500);
                                     } catch (err) { console.error(err); } finally { setIsLoading(false); }
                                 }}>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-black text-[#5F6368] uppercase ml-1">Cantidad ({selectedMaterial?.unidad || 'unidades'})</label>
-                                        <input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-3xl outline-none text-2xl font-black focus:ring-4 focus:ring-blue-100 transition-all" placeholder="0.00" autoFocus />
-                                    </div>
-                                    <div className="space-y-1">
-                                        <label className="text-xs font-black text-[#5F6368] uppercase ml-1">Comentario</label>
-                                        <input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-2xl outline-none text-sm font-medium focus:ring-4 focus:ring-blue-100 transition-all" placeholder="Opcional..." />
-                                    </div>
-                                    <div className="flex gap-4 pt-4">
-                                        <button type="button" onClick={() => setModalType(null)} className="flex-1 py-4 font-bold text-[#5F6368]">Cancelar</button>
-                                        <button disabled={isLoading} className="flex-[2] py-4 bg-[#1a73e8] text-white rounded-3xl font-bold shadow-xl flex items-center justify-center gap-2 hover:bg-[#1557b0] transition-all disabled:opacity-50">
-                                            {isLoading ? <Icon name={Loader2} className="animate-spin" /> : 'Confirmar'}
-                                        </button>
-                                    </div>
+                                    <div className="space-y-2"><label className="text-xs font-black text-[#5F6368] uppercase ml-1">Cantidad ({selectedMaterial?.unidad || 'unidades'})</label><input required name="cantidad" type="number" step="0.01" className="w-full px-7 py-5 bg-[#F1F3F4] rounded-[24px] outline-none text-3xl font-black focus:ring-4 focus:ring-blue-100 transition-all border-none" placeholder="0.00" autoFocus /></div>
+                                    <div className="space-y-2"><label className="text-xs font-black text-[#5F6368] uppercase ml-1">Comentario</label><input name="nota" className="w-full px-7 py-4 bg-[#F1F3F4] rounded-[20px] outline-none text-sm font-semibold focus:ring-4 focus:ring-blue-100 transition-all border-none" placeholder="Ej: Reposición bodega central" /></div>
+                                    <div className="flex gap-4 pt-4"><button type="button" onClick={() => setModalType(null)} className="flex-1 py-4 font-black text-[#5F6368] hover:bg-gray-100 rounded-full transition-all">Cancelar</button><button disabled={isLoading} className="flex-[2] py-4 bg-[#1a73e8] text-white rounded-full font-black shadow-xl shadow-blue-100 flex items-center justify-center gap-3 hover:bg-[#1557b0] transition-all disabled:opacity-50">{isLoading ? <Icon name="progress_activity" size={20} spin /> : 'Confirmar Registro'}</button></div>
                                 </form>
                             </div>
                         </div>
