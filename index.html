@@ -139,22 +139,25 @@
             // 9. Tapas, Bombillas y Desechables
             if (text.includes('tapa') || text.includes('bombilla') || text.includes('pajilla') || text.includes('fajilla') || text.includes('manga') || text.includes('revolvedor') || text.includes('servilleta') || text.includes('porta')) return 'takeout_dining';
             
-            // 10. Empaques Generales y Bolsas
-            if (text.includes('bolsa') || text.includes('caja') || text.includes('empaque') || text.includes('packaging')) return 'shopping_bag';
+            // 10. Bolsas
+            if (text.includes('bolsa')) return 'shopping_bag';
             
-            // 11. Limpieza y Aseo
+            // 11. Cajas y Empaques de Cartón
+            if (text.includes('caja') || text.includes('carton') || text.includes('cartón') || text.includes('empaque') || text.includes('packaging')) return 'inventory_2'; // Caja de cartón elegante
+            
+            // 12. Limpieza y Aseo
             if (text.includes('limpieza') || text.includes('aseo') || text.includes('cloro') || text.includes('detergente') || text.includes('jabon') || text.includes('jabón') || text.includes('basura') || text.includes('esponja') || text.includes('sanitizante') || text.includes('paño')) return 'sanitizer'; // Botella de spray (Minimalista)
             
-            // 12. Equipamiento y Repuestos
+            // 13. Equipamiento y Repuestos
             if (text.includes('equipo') || text.includes('maquina') || text.includes('repuesto') || text.includes('filtro') || text.includes('herramienta') || text.includes('mantenimiento')) return 'handyman';
             
-            // 13. Merchandising
+            // 14. Merchandising
             if (text.includes('merchandising') || text.includes('ropa') || text.includes('polera') || text.includes('jockey') || text.includes('delantal') || text.includes('tote')) return 'checkroom'; // Percha de ropa elegante
             
-            // 14. Papelería y Oficina
+            // 15. Papelería y Oficina
             if (text.includes('papel') || text.includes('oficina') || text.includes('boleta') || text.includes('impresora') || text.includes('tinta') || text.includes('rollo') || text.includes('termico')) return 'receipt_long'; // Ticket / Boleta
             
-            // Por defecto (Caja minimalista)
+            // Por defecto (Caja minimalista cerrada)
             return 'package_2'; 
         };
 
