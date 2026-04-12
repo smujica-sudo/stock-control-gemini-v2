@@ -676,10 +676,29 @@
                                                     <button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('ADJUST'); triggerHaptic(); }} className="action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-4 bg-[#F1F3F4] text-[#5F6368] rounded-[24px] hover:bg-[#5F6368] hover:text-white transition-colors min-w-[90px]"><Icon name="tune" size={28} fill /><span className="text-[10px] font-bold uppercase">Ajustar</span></button>
                                                 </div>
                                             </div>
+                                            
                                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mt-6 border-t border-[#F1F3F4] pt-8">
-                                                <div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2">Stock Actual</p><p className={`text-4xl md:text-5xl font-black tracking-tighter ${parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : 'text-[#202124]'}`}>{parseFloat(navigationData.item.stock).toLocaleString()} <span className="text-sm md:text-base font-bold text-[#5F6368]">{navigationData.item.unidad}</span></p></div>
-                                                <div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2">Alcance Estimado</p><p className="text-4xl md:text-5xl font-black tracking-tighter text-[#1a73e8]">{stats.getDaysLeft(navigationData.item.id, navigationData.item.stock)} <span className="text-sm md:text-base font-bold text-[#5F6368]">días</span></p></div>
-                                                <div className="col-span-2 md:col-span-1 bg-[#F8F9FA] p-6 md:p-8 rounded-[32px] flex items-center gap-5"><Icon name={parseFloat(navigationData.item.stock) <= 0 ? 'error' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'warning' : 'check_circle'} size={44} fill className={parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'text-amber-600' : 'text-green-600'} /><div><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-1">Estado</p><p className="text-xl font-bold uppercase tracking-tight text-[#202124]">{(parseFloat(navigationData.item.stock) || 0) <= 0 ? 'Agotado' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'Crítico' : 'Óptimo'}</p></div></div>
+                                                <div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]">
+                                                    <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2">Stock Actual</p>
+                                                    <div className={`flex items-baseline gap-1.5 ${parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : 'text-[#202124]'}`}>
+                                                        <span className="text-4xl md:text-5xl font-black tracking-tight">{parseFloat(navigationData.item.stock).toLocaleString()}</span>
+                                                        <span className="text-sm md:text-base font-bold text-[#5F6368] tracking-normal lowercase">{navigationData.item.unidad}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]">
+                                                    <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2">Alcance Estimado</p>
+                                                    <div className="flex items-baseline gap-1.5 text-[#1a73e8]">
+                                                        <span className="text-4xl md:text-5xl font-black tracking-tight">{stats.getDaysLeft(navigationData.item.id, navigationData.item.stock)}</span>
+                                                        <span className="text-sm md:text-base font-bold text-[#5F6368] tracking-normal lowercase">días</span>
+                                                    </div>
+                                                </div>
+                                                <div className="col-span-2 md:col-span-1 bg-[#F8F9FA] p-6 md:p-8 rounded-[32px] flex items-center gap-5">
+                                                    <Icon name={parseFloat(navigationData.item.stock) <= 0 ? 'error' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'warning' : 'check_circle'} size={44} fill className={parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'text-amber-600' : 'text-green-600'} />
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-1">Estado</p>
+                                                        <p className="text-xl font-bold uppercase tracking-tight text-[#202124]">{(parseFloat(navigationData.item.stock) || 0) <= 0 ? 'Agotado' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'Crítico' : 'Óptimo'}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
 
