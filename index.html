@@ -136,15 +136,18 @@
             // 7. Merchandising
             if (text.includes('merchandising') || text.includes('ropa') || text.includes('polera') || text.includes('jockey') || text.includes('delantal') || text.includes('tote')) return 'checkroom'; // Percha de ropa elegante
             
-            // 8. Papelería y Oficina
+            // 8. Etiquetas y Adhesivos
+            if (text.includes('etiqueta') || text.includes('adhesivo') || text.includes('sticker')) return 'label'; // Ícono de etiqueta (tag)
+            
+            // 9. Papelería y Oficina
             if (text.includes('papel') || text.includes('oficina') || text.includes('boleta') || text.includes('impresora') || text.includes('tinta') || text.includes('rollo') || text.includes('termico')) return 'receipt_long'; // Ticket / Boleta
 
             // PRIORIDAD 2: INGREDIENTES Y ALIMENTOS
             
-            // 9. Café, Granos y Espresso
+            // 10. Café, Granos y Espresso
             if (text.includes('café') || text.includes('cafe') || text.includes('grano') || text.includes('espresso') || text.includes('decaf')) return 'coffee';
             
-            // 10. Té, Matcha, Infusiones
+            // 11. Té, Matcha, Infusiones
             if (text.includes('té') || text.includes('te ') || text.includes('matcha') || text.includes('chai') || text.includes('infusión') || text.includes('hoja')) return 'emoji_food_beverage';
             
             // 11. Leches y Lácteos (Animal o Vegetal)
@@ -348,7 +351,7 @@
                     <div className="min-h-screen flex items-center justify-center p-6 bg-[#F8F9FA]">
                         <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-xl border border-[#E0E0E0] text-center gpu-accelerated">
                             <div className="w-20 h-20 bg-[#1a73e8] rounded-3xl mx-auto mb-8 flex items-center justify-center text-white shadow-lg shadow-blue-200 rotate-3">
-                                <Icon name="inventory_2" size={40} fill />
+                                <span className="text-5xl font-black font-sans leading-none">K</span>
                             </div>
                             <h1 className="text-2xl font-bold mb-2 text-[#202124]">Kawas Coffee</h1>
                             <p className="text-[#5F6368] text-sm mb-6">Bodega e Inventario</p>
@@ -394,9 +397,11 @@
                     {/* BARRA LATERAL FIJA (SOLO DESKTOP) */}
                     <aside className="no-print hidden lg:flex flex-col w-64 bg-white border-r border-[#E0E0E0] fixed h-full z-20">
                         <div className="p-8">
-                            <div className="flex items-center gap-3 text-[#1a73e8]">
-                                <Icon name="storefront" size={32} fill />
-                                <span className="font-bold text-xl tracking-tight">Kawas Stock</span>
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-[#1a73e8] rounded-xl flex items-center justify-center text-white shadow-md shadow-blue-200 shrink-0">
+                                    <span className="text-2xl font-black font-sans leading-none">K</span>
+                                </div>
+                                <span className="font-black text-2xl tracking-tighter uppercase text-[#202124]">Kawas</span>
                             </div>
                         </div>
                         <nav className="flex-1 px-4 space-y-2">
@@ -440,8 +445,11 @@
                         
                         {/* Header Superior Móvil (Para mostrar sync) */}
                         <div className="lg:hidden flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-bold tracking-tight text-[#1a73e8] flex items-center gap-2">
-                                <Icon name="storefront" size={20} fill /> Kawas Coffee
+                            <h2 className="text-xl font-black tracking-tighter uppercase text-[#202124] flex items-center gap-3">
+                                <div className="w-8 h-8 bg-[#1a73e8] rounded-[10px] flex items-center justify-center text-white shadow-sm shrink-0">
+                                    <span className="text-lg font-black font-sans leading-none">K</span>
+                                </div>
+                                Kawas
                             </h2>
                             <div className="flex items-center gap-2">
                                 {isSaving && <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1"><Icon name="cloud_upload" size={14} /></span>}
@@ -646,7 +654,15 @@
 
                                 <div className="bg-white p-8 md:p-14 rounded-[40px] md:rounded-[48px] border border-[#E0E0E0] shadow-sm report-container">
                                     <div className="border-b-4 border-[#1a73e8] pb-6 mb-10 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
-                                        <div><h1 className="text-4xl md:text-5xl font-black text-[#202124] tracking-tighter uppercase mb-2">Kawas Coffee</h1><h2 className="text-base md:text-lg font-bold text-[#5F6368] uppercase tracking-widest">Reporte Consolidado</h2></div>
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-14 h-14 bg-[#1a73e8] rounded-2xl flex items-center justify-center text-white shadow-md shrink-0">
+                                                <span className="text-3xl font-black font-sans leading-none">K</span>
+                                            </div>
+                                            <div>
+                                                <h1 className="text-4xl md:text-5xl font-black text-[#202124] tracking-tighter uppercase mb-1">Kawas Coffee</h1>
+                                                <h2 className="text-sm md:text-base font-bold text-[#5F6368] uppercase tracking-widest">Reporte Consolidado</h2>
+                                            </div>
+                                        </div>
                                         <div className="text-left md:text-right"><p className="text-sm font-bold text-[#202124]">FECHA: {new Date().toLocaleDateString()}</p><p className="text-xs font-medium text-[#5F6368] uppercase mt-1">Generado por: {user.nombre}</p></div>
                                     </div>
 
