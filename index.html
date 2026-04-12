@@ -45,44 +45,44 @@
             animation: spin 1s linear infinite;
         }
 
-        /* Utilidades */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        .shadow-google {
+            box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+        }
+        
+        .nav-card:active {
+            transform: scale(0.98);
+        }
     </style>
 </head>
 <body>
     <div id="root">
         <div class="loader-container">
             <div class="spinner"></div>
-            <p style="margin-top: 24px; font-weight: 700; font-size: 1.1rem; color: #1a73e8;">Cargando Kawas Stock...</p>
-            <p style="margin-top: 8px; color: #5F6368; font-size: 0.85rem;">Preparando panel de control</p>
+            <p style="margin-top: 24px; font-weight: 700; font-size: 1.1rem; color: #1a73e8;">Sincronizando con Kawas...</p>
         </div>
     </div>
 
     <script type="text/babel">
-        /**
-         * KAWAS STOCK CONTROL - GITHUB DEPLOYMENT FIX
-         */
         const { useState, useEffect, useMemo } = React;
         
-        // CORRECCIÓN CRÍTICA: Acceso a LucideReact con el nombre global correcto
+        // Acceso global a iconos Lucide
         const LucideIcons = window.LucideReact || {};
-        
-        // Desestructuración segura para evitar que la app falle si falta un icono
         const { 
             LayoutDashboard, Search, History, FileText, ChevronRight, 
             ArrowUpCircle, ArrowDownCircle, SlidersHorizontal, RefreshCcw, 
             Package, AlertTriangle, CheckCircle2, User, Lock, Plus, 
             Download, ExternalLink, Loader2, PackageCheck, TrendingDown, 
-            Clock, Info, Filter, Home, AlertCircle, XCircle 
+            Clock, Info, Filter, Home, AlertCircle, XCircle, ChevronLeft, Boxes
         } = LucideIcons;
 
-        // Fallback para iconos en caso de que la librería no cargue a tiempo
         const Icon = ({ name: IconComponent, ...props }) => {
-            return IconComponent ? <IconComponent {...props} /> : <span className="font-bold">?</span>;
+            if (!IconComponent) return <span>📦</span>;
+            return <IconComponent {...props} />;
         };
 
-        // --- CONFIGURACIÓN ---
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBj6qSh5Pq0C-NZA2CQ54KRwwVdDhBwFQLTObYterxQJ0DY67Jcdc-VzfnRiYwICGiBw/exec";
 
         const App = () => {
@@ -90,30 +90,37 @@
             const [user, setUser] = useState(null);
             const [pin, setPin] = useState('');
             const [data, setData] = useState({ materiales: [], movimientos: [], usuarios: [] });
-            const [isLoading, setIsLoading] = useState(false);
+            const [error, setError] = useState(null);
             const [searchTerm, setSearchTerm] = useState('');
             const [isSyncing, setIsSyncing] = useState(false);
             const [modalType, setModalType] = useState(null); 
             const [selectedMaterial, setSelectedMaterial] = useState(null);
+            const [isLoading, setIsLoading] = useState(false);
+
+            // Estados de navegación jerárquica
+            const [navPath, setNavPath] = useState({ category: null, subcategory: null });
 
             const fetchData = async () => {
                 if (!SCRIPT_URL) return;
                 setIsSyncing(true);
                 try {
                     const response = await fetch(SCRIPT_URL);
-                    if (!response.ok) throw new Error("Error de red");
                     const json = await response.json();
-                    setData(json);
+                    if (json && json.materiales) {
+                        setData(json);
+                        setError(null);
+                    }
                 } catch (e) {
-                    console.error("Error en sincronización:", e);
+                    console.error("Error sync:", e);
+                    setError("Error de conexión");
                 } finally {
                     setIsSyncing(false);
                 }
             };
 
             useEffect(() => {
-                if (user) fetchData();
-            }, [user]);
+                fetchData();
+            }, []);
 
             const handleLogin = (e) => {
                 e.preventDefault();
@@ -131,49 +138,84 @@
             const stats = useMemo(() => {
                 const materiales = data.materiales || [];
                 const movimientos = data.movimientos || [];
-                const totalItems = materiales.length;
-                const criticalItems = materiales.filter(m => m.stock <= m.minimo && m.stock > 0).length;
-                const outOfStockList = materiales.filter(m => (parseFloat(m.stock) || 0) <= 0);
-                const outOfStock = outOfStockList.length;
-
+                
                 const getDaysLeft = (materialId, currentStock) => {
                     const sevenDaysAgo = new Date();
                     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
                     const recentOuts = movimientos.filter(mov => 
-                        mov.item_id == materialId && 
-                        mov.tipo === 'OUT' && 
-                        new Date(mov.timestamp) >= sevenDaysAgo
+                        mov.item_id == materialId && mov.tipo === 'OUT' && new Date(mov.timestamp) >= sevenDaysAgo
                     );
                     const totalConsumed = recentOuts.reduce((acc, curr) => acc + Math.abs(parseFloat(curr.cantidad || 0)), 0);
                     const avgDaily = totalConsumed / 7;
-                    return avgDaily <= 0 ? '---' : Math.round(currentStock / avgDaily);
+                    return avgDaily <= 0 ? '---' : Math.round(parseFloat(currentStock) / avgDaily);
                 };
 
-                const categories = [...new Set(materiales.map(m => m.categoria))];
-                const categoryStats = categories.map(cat => {
-                    const items = materiales.filter(m => m.categoria === cat);
-                    return {
-                        name: cat,
-                        total: items.length,
-                        critical: items.filter(m => m.stock <= m.minimo && m.stock > 0).length,
-                        outOfStock: items.filter(m => (parseFloat(m.stock) || 0) <= 0).length,
-                        stockTotal: items.reduce((acc, curr) => acc + (parseFloat(curr.stock) || 0), 0)
-                    };
-                });
+                const outOfStockList = materiales.filter(m => (parseFloat(m.stock) || 0) <= 0);
+                const criticalItemsCount = materiales.filter(m => {
+                    const s = parseFloat(m.stock) || 0;
+                    const mn = parseFloat(m.minimo) || 0;
+                    return s <= mn && s > 0;
+                }).length;
 
-                return { totalItems, criticalItems, outOfStock, outOfStockList, getDaysLeft, categoryStats };
+                return { 
+                    totalItems: materiales.length, 
+                    criticalItems: criticalItemsCount, 
+                    outOfStock: outOfStockList.length, 
+                    outOfStockList, 
+                    getDaysLeft 
+                };
             }, [data]);
 
-            const filteredMaterials = (data.materiales || []).filter(m => 
-                m.nombre?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                m.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                m.subcategoria?.toLowerCase().includes(searchTerm.toLowerCase())
-            );
+            // Lógica de filtrado jerárquico
+            const navigationData = useMemo(() => {
+                const materiales = data.materiales || [];
+                
+                // Si hay búsqueda, ignorar jerarquía y mostrar todo lo que coincida
+                if (searchTerm) {
+                    return { level: 'search', items: materiales.filter(m => 
+                        (m.nombre || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+                        (m.categoria || "").toLowerCase().includes(searchTerm.toLowerCase())
+                    )};
+                }
+
+                if (!navPath.category) {
+                    // Nivel 1: Categorías
+                    const cats = [...new Set(materiales.map(m => m.categoria).filter(Boolean))];
+                    const items = cats.map(name => {
+                        const count = materiales.filter(m => m.categoria === name).length;
+                        const out = materiales.filter(m => m.categoria === name && (parseFloat(m.stock) || 0) <= 0).length;
+                        return { name, count, out, type: 'category' };
+                    });
+                    return { level: 'categories', items };
+                }
+
+                if (!navPath.subcategory) {
+                    // Nivel 2: Subcategorías
+                    const subcats = [...new Set(materiales
+                        .filter(m => m.categoria === navPath.category)
+                        .map(m => m.subcategoria || 'General')
+                    )];
+                    const items = subcats.map(name => {
+                        const count = materiales.filter(m => m.categoria === navPath.category && (m.subcategoria || 'General') === name).length;
+                        const out = materiales.filter(m => m.categoria === navPath.category && (m.subcategoria || 'General') === name && (parseFloat(m.stock) || 0) <= 0).length;
+                        return { name, count, out, type: 'subcategory' };
+                    });
+                    return { level: 'subcategories', items };
+                }
+
+                // Nivel 3: Ítems finales
+                const items = materiales.filter(m => 
+                    m.categoria === navPath.category && 
+                    (m.subcategoria || 'General') === navPath.subcategory
+                );
+                return { level: 'items', items };
+
+            }, [data.materiales, navPath, searchTerm]);
 
             if (view === 'login') {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-6 bg-[#F8F9FA]">
-                        <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-xl border border-[#E0E0E0] text-center animate-in fade-in duration-700">
+                        <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-xl border border-[#E0E0E0] text-center">
                             <div className="w-20 h-20 bg-[#1a73e8] rounded-3xl mx-auto mb-8 flex items-center justify-center text-white shadow-lg rotate-3">
                                 <Icon name={PackageCheck} size={40} />
                             </div>
@@ -186,10 +228,10 @@
                                     placeholder="PIN"
                                     value={pin}
                                     onChange={e => setPin(e.target.value)}
-                                    className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] focus:ring-4 focus:ring-blue-100 outline-none transition-all border-2 border-transparent focus:border-blue-200"
+                                    className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] focus:ring-4 focus:ring-blue-100 outline-none border-2 border-transparent focus:border-blue-200"
                                 />
-                                <button className="w-full bg-[#1a73e8] text-white py-5 rounded-full font-bold shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-all active:scale-95">
-                                    Ingresar
+                                <button disabled={isSyncing} className="w-full bg-[#1a73e8] text-white py-5 rounded-full font-bold shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-all active:scale-95 disabled:opacity-50">
+                                    {isSyncing ? "Entrando..." : "Ingresar"}
                                 </button>
                             </form>
                         </div>
@@ -210,13 +252,13 @@
                         <nav className="flex-1 px-4 space-y-2">
                             {[
                                 { id: 'dashboard', label: 'Inicio', icon: Home },
-                                { id: 'inventory', label: 'Bodega', icon: Search },
+                                { id: 'inventory', label: 'Bodega', icon: Boxes },
                                 { id: 'history', label: 'Historial', icon: History },
                                 { id: 'reports', label: 'Reportes', icon: FileText },
                             ].map(item => (
                                 <button 
                                     key={item.id}
-                                    onClick={() => setView(item.id)}
+                                    onClick={() => { setView(item.id); setNavPath({category:null, subcategory:null}); setSearchTerm(''); }}
                                     className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all ${view === item.id ? 'bg-[#E8F0FE] text-[#1a73e8] font-bold' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
                                 >
                                     <Icon name={item.icon} size={20} /> {item.label}
@@ -237,13 +279,12 @@
                     </aside>
 
                     <main className="flex-1 lg:ml-64 p-4 lg:p-10">
-                        {/* Dashboard View */}
                         {view === 'dashboard' && (
                             <div className="space-y-8 animate-in fade-in duration-500">
                                 <div className="flex justify-between items-end">
                                     <div>
-                                        <h2 className="text-3xl font-bold">Panel de Control</h2>
-                                        <p className="text-[#5F6368]">Estado de insumos críticos para producción.</p>
+                                        <h2 className="text-3xl font-bold tracking-tight">Panel de Control</h2>
+                                        <p className="text-[#5F6368]">Estado general de suministros Kawas.</p>
                                     </div>
                                     <button 
                                         onClick={fetchData} 
@@ -256,15 +297,15 @@
                                 </div>
 
                                 {stats.outOfStock > 0 && (
-                                    <div className="bg-red-600 text-white p-6 rounded-[32px] shadow-xl shadow-red-100 animate-in slide-in-from-top-4 duration-300">
+                                    <div className="bg-red-600 text-white p-6 rounded-[32px] shadow-xl shadow-red-100">
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                             <div className="flex items-start gap-4">
-                                                <div className="bg-white/20 p-3 rounded-2xl shrink-0 animate-pulse">
+                                                <div className="bg-white/20 p-3 rounded-2xl shrink-0">
                                                     <Icon name={XCircle} size={32} />
                                                 </div>
                                                 <div>
-                                                    <h4 className="text-xl font-black">ACCIÓN REQUERIDA: STOCK AGOTADO</h4>
-                                                    <p className="text-red-100 text-sm mb-3">Los siguientes materiales requieren reposición inmediata:</p>
+                                                    <h4 className="text-xl font-black uppercase tracking-tight">Acción Requerida</h4>
+                                                    <p className="text-red-100 text-sm mb-3">Hay {stats.outOfStock} materiales agotados:</p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {stats.outOfStockList.map(item => (
                                                             <span key={item.id} className="bg-white/10 border border-white/20 px-3 py-1 rounded-lg text-xs font-bold">
@@ -275,10 +316,10 @@
                                                 </div>
                                             </div>
                                             <button 
-                                                onClick={() => setView('inventory')}
+                                                onClick={() => { setView('inventory'); setNavPath({category:null, subcategory:null}); }}
                                                 className="bg-white text-red-600 px-8 py-4 rounded-full font-black text-sm hover:bg-red-50 transition-all active:scale-95 shadow-lg shrink-0"
                                             >
-                                                Gestionar Stock
+                                                Ver en Bodega
                                             </button>
                                         </div>
                                     </div>
@@ -300,98 +341,147 @@
                                         </div>
                                     ))}
                                 </div>
-
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                    {stats.categoryStats.map(cat => (
-                                        <div key={cat.name} className={`bg-white p-6 rounded-[32px] border transition-all hover:shadow-lg ${cat.outOfStock > 0 ? 'border-red-300' : 'border-[#E0E0E0]'}`}>
-                                            <div className="flex justify-between items-start mb-4">
-                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${cat.outOfStock > 0 ? 'bg-red-600 text-white' : 'bg-[#F1F3F4] text-[#1a73e8]'}`}>
-                                                    <Icon name={Package} size={24} />
-                                                </div>
-                                                {cat.outOfStock > 0 && <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] font-black animate-pulse">{cat.outOfStock} AGOTADOS</span>}
-                                            </div>
-                                            <h4 className="text-lg font-bold">{cat.name}</h4>
-                                            <div className="mt-4 flex items-center justify-between border-t border-[#F1F3F4] pt-4">
-                                                <p className="text-sm font-bold text-blue-600">{cat.stockTotal.toLocaleString()} unidades</p>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
                             </div>
                         )}
 
-                        {/* Inventory View */}
                         {view === 'inventory' && (
-                            <div className="space-y-6 animate-in slide-in-from-bottom-4">
+                            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                                {/* Buscador y Breadcrumbs */}
                                 <div className="sticky top-0 z-10 bg-[#F8F9FA]/90 backdrop-blur-md pb-4 pt-2">
-                                    <div className="relative">
+                                    <div className="relative mb-4">
                                         <Icon name={Search} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#5F6368]" size={24} />
                                         <input 
                                             type="text" 
-                                            placeholder="Buscar materiales..."
+                                            placeholder="¿Qué buscas? (Búsqueda global instantánea)"
                                             value={searchTerm}
                                             onChange={e => setSearchTerm(e.target.value)}
-                                            className="w-full pl-14 pr-6 py-5 bg-white border border-[#E0E0E0] rounded-[30px] shadow-sm focus:ring-4 focus:ring-blue-100 outline-none text-lg"
+                                            className="w-full pl-14 pr-6 py-5 bg-white border border-[#E0E0E0] rounded-[30px] shadow-sm focus:ring-4 focus:ring-blue-100 outline-none text-lg font-medium transition-all"
                                         />
                                     </div>
+
+                                    {!searchTerm && (
+                                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+                                            <button 
+                                                onClick={() => setNavPath({category:null, subcategory:null})}
+                                                className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${!navPath.category ? 'bg-[#1a73e8] text-white' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}
+                                            >
+                                                Bodega
+                                            </button>
+                                            {navPath.category && (
+                                                <>
+                                                    <Icon name={ChevronRight} size={16} className="text-[#BDC1C6] shrink-0" />
+                                                    <button 
+                                                        onClick={() => setNavPath({...navPath, subcategory:null})}
+                                                        className={`px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all ${navPath.category && !navPath.subcategory ? 'bg-[#1a73e8] text-white' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}
+                                                    >
+                                                        {navPath.category}
+                                                    </button>
+                                                </>
+                                            )}
+                                            {navPath.subcategory && (
+                                                <>
+                                                    <Icon name={ChevronRight} size={16} className="text-[#BDC1C6] shrink-0" />
+                                                    <button className="px-4 py-2 bg-[#1a73e8] text-white rounded-full text-sm font-bold whitespace-nowrap">
+                                                        {navPath.subcategory}
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
-                                <div className="grid grid-cols-1 gap-4">
-                                    {filteredMaterials.map(m => {
-                                        const days = stats.getDaysLeft(m.id, m.stock);
-                                        const isCritical = m.stock <= m.minimo && m.stock > 0;
-                                        const isOutOfStock = (parseFloat(m.stock) || 0) <= 0;
-                                        return (
-                                            <div key={m.id} className={`bg-white p-6 rounded-[32px] border flex flex-col md:flex-row md:items-center justify-between gap-6 ${isOutOfStock ? 'border-red-400 bg-red-50/10 shadow-lg shadow-red-50' : isCritical ? 'border-amber-300' : 'border-[#E0E0E0]'}`}>
-                                                <div className="flex items-center gap-5">
-                                                    <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isOutOfStock ? 'bg-red-600 text-white' : isCritical ? 'bg-amber-100 text-amber-600' : 'bg-green-50 text-green-600'}`}>
-                                                        <Icon name={Package} size={32} />
+
+                                {/* Grid Navegable */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    {/* Caso de Categorías o Subcategorías */}
+                                    {(navigationData.level === 'categories' || navigationData.level === 'subcategories') && (
+                                        navigationData.items.map((item, idx) => (
+                                            <div 
+                                                key={idx}
+                                                onClick={() => {
+                                                    if (navigationData.level === 'categories') setNavPath({...navPath, category: item.name});
+                                                    else setNavPath({...navPath, subcategory: item.name});
+                                                }}
+                                                className="bg-white p-6 rounded-[32px] border border-[#E0E0E0] hover:border-[#1a73e8] hover:shadow-xl transition-all cursor-pointer group nav-card"
+                                            >
+                                                <div className="flex justify-between items-start mb-6">
+                                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-colors ${item.out > 0 ? 'bg-red-50 text-red-600' : 'bg-[#F1F3F4] text-[#1a73e8] group-hover:bg-[#1a73e8] group-hover:text-white'}`}>
+                                                        <Icon name={Package} size={28} />
                                                     </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-[#5F6368] uppercase">{m.categoria} {isOutOfStock && '• AGOTADO'}</p>
-                                                        <h4 className="text-xl font-bold">{m.nombre}</h4>
-                                                    </div>
+                                                    {item.out > 0 && <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[10px] font-black animate-pulse">{item.out} AGOTADOS</span>}
                                                 </div>
-                                                <div className="flex gap-8 px-4 text-center">
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-[#5F6368] uppercase">Stock</p>
-                                                        <p className={`text-2xl font-black ${isOutOfStock ? 'text-red-600 animate-pulse' : isCritical ? 'text-amber-600' : 'text-[#202124]'}`}>{m.stock}</p>
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-bold text-[#5F6368] uppercase">Días</p>
-                                                        <p className="text-2xl font-black text-[#1a73e8]">{isOutOfStock ? '0' : days}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => { setSelectedMaterial(m); setModalType('IN'); }} className="p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all"><Icon name={Plus} size={24}/></button>
-                                                    <button disabled={isOutOfStock} onClick={() => { setSelectedMaterial(m); setModalType('OUT'); }} className={`p-4 rounded-2xl transition-all ${isOutOfStock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name={TrendingDown} size={24}/></button>
-                                                    <button onClick={() => { setSelectedMaterial(m); setModalType('ADJUST'); }} className="p-4 bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-700 hover:text-white transition-all"><Icon name={SlidersHorizontal} size={24}/></button>
+                                                <h4 className="text-xl font-bold mb-1 group-hover:text-[#1a73e8] transition-colors">{item.name}</h4>
+                                                <p className="text-sm text-[#5F6368]">{item.count} materiales registrados</p>
+                                                <div className="mt-6 flex items-center gap-1 text-[#1a73e8] font-bold text-xs">
+                                                    Entrar <Icon name={ChevronRight} size={14} />
                                                 </div>
                                             </div>
-                                        );
-                                    })}
+                                        ))
+                                    )}
+
+                                    {/* Caso de Ítems (Nivel final o búsqueda) */}
+                                    {(navigationData.level === 'items' || navigationData.level === 'search') && (
+                                        <div className="col-span-full grid grid-cols-1 gap-4">
+                                            {navigationData.items.map(m => {
+                                                const days = stats.getDaysLeft(m.id, m.stock);
+                                                const isCritical = m.stock <= m.minimo && m.stock > 0;
+                                                const isOutOfStock = (parseFloat(m.stock) || 0) <= 0;
+                                                return (
+                                                    <div key={m.id} className={`bg-white p-6 rounded-[32px] border flex flex-col md:flex-row md:items-center justify-between gap-6 transition-all ${isOutOfStock ? 'border-red-400 bg-red-50/10 shadow-lg' : isCritical ? 'border-amber-300' : 'border-[#E0E0E0]'}`}>
+                                                        <div className="flex items-center gap-5">
+                                                            <div className={`relative w-16 h-16 rounded-2xl flex items-center justify-center ${isOutOfStock ? 'bg-red-600 text-white' : isCritical ? 'bg-amber-100 text-amber-600' : 'bg-green-50 text-green-600'}`}>
+                                                                <Icon name={Package} size={32} />
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">{m.subcategoria || 'General'} {isOutOfStock && '• AGOTADO'}</p>
+                                                                <h4 className={`text-xl font-bold ${isOutOfStock ? 'text-red-700' : 'text-[#202124]'}`}>{m.nombre}</h4>
+                                                                <p className="text-xs text-[#5F6368] font-medium mt-1">Ref: {m.id} • Min: {m.minimo} {m.unidad}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-8 px-4 text-center">
+                                                            <div>
+                                                                <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-tighter">Stock</p>
+                                                                <p className={`text-2xl font-black ${isOutOfStock ? 'text-red-600 animate-pulse' : isCritical ? 'text-amber-600' : 'text-[#202124]'}`}>{parseFloat(m.stock).toLocaleString()}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-tighter">Alcance</p>
+                                                                <p className="text-2xl font-black text-[#1a73e8]">{isOutOfStock ? '0' : days} <span className="text-[10px]">días</span></p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="flex gap-2">
+                                                            <button onClick={() => { setSelectedMaterial(m); setModalType('IN'); }} className="flex-1 md:flex-none p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all"><Icon name={Plus} size={24}/></button>
+                                                            <button disabled={isOutOfStock} onClick={() => { setSelectedMaterial(m); setModalType('OUT'); }} className={`flex-1 md:flex-none p-4 rounded-2xl transition-all ${isOutOfStock ? 'bg-gray-100 text-gray-300' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name={TrendingDown} size={24}/></button>
+                                                            <button onClick={() => { setSelectedMaterial(m); setModalType('ADJUST'); }} className="flex-1 md:flex-none p-4 bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-700 hover:text-white transition-all"><Icon name={SlidersHorizontal} size={24}/></button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}
 
-                        {/* History View */}
                         {view === 'history' && (
-                            <div className="bg-white rounded-[32px] border border-[#E0E0E0] overflow-hidden shadow-sm animate-in fade-in">
+                            <div className="bg-white rounded-[32px] border border-[#E0E0E0] overflow-hidden shadow-sm animate-in fade-in duration-500">
                                 <div className="p-8 border-b border-[#F1F3F4] flex items-center justify-between">
-                                    <div className="flex items-center gap-3"><Icon name={History} className="text-blue-600" size={24}/><h3 className="text-xl font-bold">Bitácora</h3></div>
+                                    <div className="flex items-center gap-3"><Icon name={History} className="text-blue-600" size={24}/><h3 className="text-xl font-bold tracking-tight">Bitácora de Movimientos</h3></div>
                                     <button onClick={fetchData} className="p-2 hover:bg-[#F1F3F4] rounded-full transition-colors"><Icon name={RefreshCcw} size={20}/></button>
                                 </div>
                                 <div className="overflow-x-auto no-scrollbar">
                                     <table className="w-full text-left">
                                         <thead className="bg-[#F8F9FA] text-[#5F6368] text-[10px] uppercase font-black tracking-widest">
-                                            <tr><th className="px-8 py-5">Fecha</th><th className="px-8 py-5">Tipo</th><th className="px-8 py-5">Material</th><th className="px-8 py-5 text-right">Cant / Saldo</th></tr>
+                                            <tr><th className="px-8 py-5">Fecha</th><th className="px-8 py-5">Tipo</th><th className="px-8 py-5">Material</th><th className="px-8 py-5 text-right">Saldo</th></tr>
                                         </thead>
                                         <tbody className="divide-y divide-[#F1F3F4]">
                                             {(data.movimientos || []).slice().reverse().map((m, i) => (
-                                                <tr key={i} className="hover:bg-[#F8F9FA]">
-                                                    <td className="px-8 py-5 text-xs font-bold">{new Date(m.timestamp).toLocaleDateString()}</td>
-                                                    <td className="px-8 py-5"><span className={`px-2 py-1 rounded-full text-[9px] font-black ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{m.tipo}</span></td>
-                                                    <td className="px-8 py-5 text-xs font-bold">{m.item_nombre}</td>
-                                                    <td className="px-8 py-5 text-right"><p className={`text-xs font-black ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{m.diferencia}</p><p className="text-[10px] font-bold text-[#5F6368]">Stock: {m.stock_nuevo}</p></td>
+                                                <tr key={i} className="hover:bg-[#F8F9FA] transition-colors">
+                                                    <td className="px-8 py-5">
+                                                        <p className="text-sm font-bold">{new Date(m.timestamp).toLocaleDateString()}</p>
+                                                        <p className="text-[9px] uppercase text-[#5F6368]">{m.usuario}</p>
+                                                    </td>
+                                                    <td className="px-8 py-5"><span className={`px-3 py-1 rounded-full text-[9px] font-black ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{m.tipo}</span></td>
+                                                    <td className="px-8 py-5 text-sm font-bold">{m.item_nombre}</td>
+                                                    <td className="px-8 py-5 text-right"><p className={`text-sm font-black ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{parseFloat(m.diferencia) > 0 ? '+' : ''}{m.diferencia}</p><p className="text-[10px] font-bold text-[#5F6368]">Final: {m.stock_nuevo}</p></td>
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -400,18 +490,17 @@
                             </div>
                         )}
 
-                        {/* Reports View */}
                         {view === 'reports' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in duration-500">
                                 <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group hover:shadow-xl transition-all">
                                     <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6"><Icon name={FileText} size={40} /></div>
-                                    <h3 className="text-2xl font-bold mb-4">Stock PDF</h3>
+                                    <h3 className="text-2xl font-bold mb-4 tracking-tight">Stock PDF</h3>
                                     <button onClick={() => window.print()} className="w-full py-5 bg-[#F1F3F4] text-[#202124] rounded-full font-bold hover:bg-[#E0E0E0] transition-all flex items-center justify-center gap-2">Descargar PDF</button>
                                 </div>
                                 <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group hover:shadow-xl transition-all">
                                     <div className="w-20 h-20 bg-green-50 text-green-600 rounded-3xl flex items-center justify-center mx-auto mb-6"><Icon name={ExternalLink} size={40} /></div>
-                                    <h3 className="text-2xl font-bold mb-4">Excel Google Drive</h3>
-                                    <button onClick={() => window.open('https://docs.google.com/spreadsheets/', '_blank')} className="w-full py-5 bg-[#1a73e8] text-white rounded-full font-bold shadow-xl hover:bg-[#1557b0] transition-all flex items-center justify-center gap-2">Abrir Planilla</button>
+                                    <h3 className="text-2xl font-bold mb-4 tracking-tight">Excel Google Drive</h3>
+                                    <button onClick={() => window.open('https://docs.google.com/spreadsheets/d/1oZiefz32aCVb0iBGnfQ5drzZKvk94HVCbWcgZleIKlg/edit', '_blank')} className="w-full py-5 bg-[#1a73e8] text-white rounded-full font-bold shadow-xl hover:bg-[#1557b0] transition-all flex items-center justify-center gap-2">Abrir Planilla</button>
                                 </div>
                             </div>
                         )}
@@ -421,11 +510,15 @@
                     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] px-4 py-4 z-40 flex justify-around items-center rounded-t-[30px] shadow-2xl">
                         {[
                             { id: 'dashboard', icon: LayoutDashboard, label: 'Inicio' },
-                            { id: 'inventory', icon: Search, label: 'Bodega' },
+                            { id: 'inventory', icon: Boxes, label: 'Bodega' },
                             { id: 'history', icon: History, label: 'Bitácora' },
                             { id: 'reports', icon: FileText, label: 'Reportes' },
                         ].map(item => (
-                            <button key={item.id} onClick={() => setView(item.id)} className={`flex flex-col items-center gap-1 p-2 transition-all ${view === item.id ? 'text-blue-600' : 'text-[#BDC1C6]'}`}>
+                            <button 
+                                key={item.id} 
+                                onClick={() => { setView(item.id); setNavPath({category:null, subcategory:null}); setSearchTerm(''); }} 
+                                className={`flex flex-col items-center gap-1 p-2 transition-all ${view === item.id ? 'text-blue-600' : 'text-[#BDC1C6]'}`}
+                            >
                                 <div className={`p-2 px-6 rounded-full ${view === item.id ? 'bg-blue-50' : ''}`}><Icon name={item.icon} size={24} /></div>
                                 <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
                             </button>
@@ -462,7 +555,7 @@
                                     } catch (err) { console.error(err); } finally { setIsLoading(false); }
                                 }}>
                                     <div className="space-y-1">
-                                        <label className="text-xs font-black text-[#5F6368] uppercase ml-1">Cantidad ({selectedMaterial?.unidad})</label>
+                                        <label className="text-xs font-black text-[#5F6368] uppercase ml-1">Cantidad ({selectedMaterial?.unidad || 'unidades'})</label>
                                         <input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-3xl outline-none text-2xl font-black focus:ring-4 focus:ring-blue-100 transition-all" placeholder="0.00" autoFocus />
                                     </div>
                                     <div className="space-y-1">
@@ -470,8 +563,8 @@
                                         <input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-2xl outline-none text-sm font-medium focus:ring-4 focus:ring-blue-100 transition-all" placeholder="Opcional..." />
                                     </div>
                                     <div className="flex gap-4 pt-4">
-                                        <button type="button" onClick={() => setModalType(null)} className="flex-1 py-4 font-bold text-[#5F6368] hover:bg-gray-100 rounded-2xl transition-all">Cancelar</button>
-                                        <button disabled={isLoading} className="flex-[2] py-4 bg-[#1a73e8] text-white rounded-3xl font-bold shadow-xl flex items-center justify-center gap-2 hover:bg-[#1557b0] transition-all active:scale-95 disabled:opacity-50">
+                                        <button type="button" onClick={() => setModalType(null)} className="flex-1 py-4 font-bold text-[#5F6368]">Cancelar</button>
+                                        <button disabled={isLoading} className="flex-[2] py-4 bg-[#1a73e8] text-white rounded-3xl font-bold shadow-xl flex items-center justify-center gap-2 hover:bg-[#1557b0] transition-all disabled:opacity-50">
                                             {isLoading ? <Icon name={Loader2} className="animate-spin" /> : 'Confirmar'}
                                         </button>
                                     </div>
@@ -483,9 +576,7 @@
             );
         };
 
-        // Renderizado final
-        const rootElement = document.getElementById('root');
-        const root = ReactDOM.createRoot(rootElement);
+        const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
     </script>
 </body>
