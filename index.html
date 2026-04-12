@@ -124,6 +124,7 @@
             </span>
         );
 
+        // --- URL DEL BACKEND (Verificar que corresponda a la última implementación) ---
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbye0BCOskWfd-jep9i605zmPGM0VLS3XYphKeHiYkKOSAWK8Jzwx0U7LnCLeVqJgjqohg/exec";
 
         const App = () => {
@@ -133,30 +134,49 @@
             const [data, setData] = useState({ materiales: [], movimientos: [], usuarios: [] });
             const [searchTerm, setSearchTerm] = useState('');
             const [isSyncing, setIsSyncing] = useState(false);
+            const [syncError, setSyncError] = useState(null); // Nuevo estado para manejo de errores
             const [modalType, setModalType] = useState(null); 
             const [selectedMaterial, setSelectedMaterial] = useState(null);
             const [isLoading, setIsLoading] = useState(false);
             const [isSidebarOpen, setIsSidebarOpen] = useState(window.innerWidth > 1024);
             const [navPath, setNavPath] = useState({ category: null, subcategory: null, itemId: null });
 
-            // Feedback háptico (Vibración)
             const triggerHaptic = () => {
-                if ('vibrate' in navigator) {
-                    navigator.vibrate([15, 30, 15]);
-                }
+                if ('vibrate' in navigator) navigator.vibrate([15, 30, 15]);
             };
 
             const fetchData = async () => {
-                if (!SCRIPT_URL) return;
+                if (!SCRIPT_URL) {
+                    setSyncError("No se ha configurado la URL del Backend.");
+                    return;
+                }
                 setIsSyncing(true);
+                setSyncError(null);
                 try {
-                    const response = await fetch(SCRIPT_URL);
-                    const json = await response.json();
-                    if (json && json.materiales) {
-                        setData(json);
+                    // Se agrega redirect: 'follow' por si Google redirige la petición
+                    const response = await fetch(SCRIPT_URL, { redirect: "follow" });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Error de Servidor: ${response.status}`);
+                    }
+                    
+                    // Leemos como texto primero para validar si Google nos envió HTML (Página de login) en lugar de JSON
+                    const textData = await response.text();
+                    
+                    try {
+                        const json = JSON.parse(textData);
+                        if (json && json.materiales) {
+                            setData(json);
+                        } else {
+                            throw new Error("Estructura de datos inválida");
+                        }
+                    } catch (parseError) {
+                        // Si falla el parseo a JSON, es 99% probable que los permisos estén mal
+                        throw new Error("Permisos denegados. Verifica que el script esté publicado para 'Cualquier persona'.");
                     }
                 } catch (e) {
-                    console.error("Error en sincronización:", e);
+                    console.error("Detalle del Error de Sincronización:", e);
+                    setSyncError(e.message);
                 } finally {
                     setIsSyncing(false);
                 }
@@ -174,6 +194,12 @@
 
             const handleLogin = (e) => {
                 e.preventDefault();
+                // Si la data está vacía por un error de conexión, bloqueamos el login
+                if (data.materiales.length === 0) {
+                    alert("No hay datos cargados. Por favor, verifica la conexión y recarga la página.");
+                    return;
+                }
+
                 const validUser = (data.usuarios || []).find(u => u.pin == pin) || 
                                  (pin === "1234" ? { nombre: "Admin Kawas", rol: "Administrador" } : null);
                 if (validUser) {
@@ -270,11 +296,26 @@
                                 <Icon name="inventory" size={40} fill />
                             </div>
                             <h1 className="text-2xl font-bold mb-2 tracking-tight text-[#202124]">Kawas Coffee</h1>
-                            <p className="text-[#5F6368] text-sm mb-10 font-medium">Gestión Inteligente de Insumos</p>
+                            <p className="text-[#5F6368] text-sm mb-6 font-medium">Gestión Inteligente de Insumos</p>
+                            
+                            {/* Panel de Error de Conexión */}
+                            {syncError && (
+                                <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-left font-medium mb-6 flex flex-col gap-2 border border-red-100">
+                                    <div className="flex items-center gap-2">
+                                        <Icon name="error" size={20} fill />
+                                        <span className="font-black text-sm">Fallo de Conexión</span>
+                                    </div>
+                                    <span className="text-[11px] leading-tight">{syncError}</span>
+                                    <button onClick={fetchData} className="mt-2 text-[10px] font-black uppercase tracking-wider bg-red-100 py-1.5 rounded-lg hover:bg-red-200 transition-colors">
+                                        Reintentar Conexión
+                                    </button>
+                                </div>
+                            )}
+
                             <form onSubmit={handleLogin} className="space-y-6">
                                 <input type="password" maxLength={4} placeholder="PIN Acceso" value={pin} onChange={e => setPin(e.target.value)} className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] focus:ring-4 focus:ring-blue-100 outline-none border-2 border-transparent focus:border-blue-200 transition-all" />
-                                <button disabled={isSyncing} className="w-full bg-[#1a73e8] text-white py-5 rounded-full font-bold shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-all active:scale-95 disabled:opacity-50">
-                                    {isSyncing ? "Conectando..." : "Ingresar"}
+                                <button disabled={isSyncing || syncError !== null} className="w-full bg-[#1a73e8] text-white py-5 rounded-full font-bold shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-all active:scale-95 disabled:opacity-50">
+                                    {isSyncing ? "Conectando al Servidor..." : "Ingresar"}
                                 </button>
                             </form>
                         </div>
