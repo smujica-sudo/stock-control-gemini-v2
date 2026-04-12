@@ -514,6 +514,52 @@
                                         </div>
                                     ))}
                                 </div>
+
+                                {/* NUEVO: DESGLOSE MÉTRICO POR CATEGORÍA */}
+                                <div className="mt-8 md:mt-12 fade-in-up" style={{ animationDelay: '200ms' }}>
+                                    <h3 className="text-xl font-bold tracking-tight text-[#202124] mb-6 flex items-center gap-2">
+                                        <Icon name="pie_chart" size={24} className="text-[#1a73e8]" fill /> Desglose por Categoría
+                                    </h3>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+                                        {stats.categoryStats.map((cat, idx) => (
+                                            <div 
+                                                key={idx} 
+                                                onClick={() => { setView('inventory'); setSearchTerm(cat.name); triggerHaptic(); }} 
+                                                className={`bg-white p-6 md:p-8 rounded-[32px] border transition-all cursor-pointer hover:shadow-lg group nav-card ${cat.outOfStock > 0 ? 'border-red-300' : cat.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'}`}
+                                            >
+                                                <div className="flex justify-between items-start mb-6">
+                                                    <div className={`w-14 h-14 rounded-[20px] flex items-center justify-center transition-transform group-hover:scale-110 ${cat.outOfStock > 0 ? 'bg-red-50 text-red-600' : cat.critical > 0 ? 'bg-amber-50 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}>
+                                                        <Icon name={getItemIcon(cat.name)} size={28} fill />
+                                                    </div>
+                                                    <div className="flex flex-col gap-1.5 items-end">
+                                                        {cat.outOfStock > 0 && (
+                                                            <span className="bg-red-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-black animate-pulse flex items-center gap-1 shadow-sm">
+                                                                <Icon name="error" size={14} fill /> {cat.outOfStock} AGOTADOS
+                                                            </span>
+                                                        )}
+                                                        {cat.critical > 0 && (
+                                                            <span className="bg-amber-100 text-amber-700 px-3 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-1">
+                                                                <Icon name="warning" size={14} fill /> {cat.critical} CRÍTICOS
+                                                            </span>
+                                                        )}
+                                                        {cat.outOfStock === 0 && cat.critical === 0 && (
+                                                            <span className="bg-green-50 text-green-600 px-3 py-1.5 rounded-xl text-[10px] font-black flex items-center gap-1">
+                                                                <Icon name="check_circle" size={14} fill /> ÓPTIMO
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <h4 className="text-lg md:text-xl font-bold text-[#202124] group-hover:text-blue-600 transition-colors">{cat.name}</h4>
+                                                <div className="mt-4 flex items-center justify-between border-t border-[#F1F3F4] pt-4">
+                                                    <p className="text-xs text-[#5F6368] font-medium">{cat.total} ítems totales</p>
+                                                    <p className="text-[10px] font-bold text-[#1a73e8] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        Ver inventario <Icon name="arrow_forward" size={14} />
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             </div>
                         )}
                         
