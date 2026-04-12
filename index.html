@@ -11,7 +11,7 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <!-- Babel para JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Lucide Icons (UMD version) -->
+    <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
     <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
     
@@ -22,51 +22,65 @@
             font-family: 'Inter', sans-serif;
             background-color: #F8F9FA;
             margin: 0;
+            overflow-x: hidden;
         }
 
-        .animate-pulse-slow {
-            animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .loader-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #1a73e8;
         }
 
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .7; }
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 5px solid #E8F0FE;
+            border-top: 5px solid #1a73e8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
         }
 
-        /* Estilo para ocultar scrollbars */
+        /* Utilidades */
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-        
-        #root {
-            min-height: 100vh;
-        }
     </style>
 </head>
 <body>
     <div id="root">
-        <!-- Loader inicial mientras carga React/Babel -->
-        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; color: #1a73e8; font-family: sans-serif;">
-            <div style="width: 40px; height: 40px; border: 4px solid #f3f3f3; border-top: 4px solid #1a73e8; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-            <p style="margin-top: 20px; font-weight: 600;">Cargando Kawas Stock...</p>
+        <div class="loader-container">
+            <div class="spinner"></div>
+            <p style="margin-top: 24px; font-weight: 700; font-size: 1.1rem; color: #1a73e8;">Cargando Kawas Stock...</p>
+            <p style="margin-top: 8px; color: #5F6368; font-size: 0.85rem;">Preparando panel de control</p>
         </div>
     </div>
 
-    <style>
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
-
     <script type="text/babel">
+        /**
+         * KAWAS STOCK CONTROL - GITHUB DEPLOYMENT FIX
+         */
         const { useState, useEffect, useMemo } = React;
         
-        // Corrección de acceso a iconos: LucideReact (con Mayúsculas) es el estándar UMD
-        const icons = window.lucideReact || {};
+        // CORRECCIÓN CRÍTICA: Acceso a LucideReact con el nombre global correcto
+        const LucideIcons = window.LucideReact || {};
+        
+        // Desestructuración segura para evitar que la app falle si falta un icono
         const { 
             LayoutDashboard, Search, History, FileText, ChevronRight, 
             ArrowUpCircle, ArrowDownCircle, SlidersHorizontal, RefreshCcw, 
             Package, AlertTriangle, CheckCircle2, User, Lock, Plus, 
             Download, ExternalLink, Loader2, PackageCheck, TrendingDown, 
             Clock, Info, Filter, Home, AlertCircle, XCircle 
-        } = icons;
+        } = LucideIcons;
+
+        // Fallback para iconos en caso de que la librería no cargue a tiempo
+        const Icon = ({ name: IconComponent, ...props }) => {
+            return IconComponent ? <IconComponent {...props} /> : <span className="font-bold">?</span>;
+        };
 
         // --- CONFIGURACIÓN ---
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxBj6qSh5Pq0C-NZA2CQ54KRwwVdDhBwFQLTObYterxQJ0DY67Jcdc-VzfnRiYwICGiBw/exec";
@@ -87,7 +101,7 @@
                 setIsSyncing(true);
                 try {
                     const response = await fetch(SCRIPT_URL);
-                    if (!response.ok) throw new Error("Network error");
+                    if (!response.ok) throw new Error("Error de red");
                     const json = await response.json();
                     setData(json);
                 } catch (e) {
@@ -159,9 +173,9 @@
             if (view === 'login') {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-6 bg-[#F8F9FA]">
-                        <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-xl border border-[#E0E0E0] text-center">
+                        <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-xl border border-[#E0E0E0] text-center animate-in fade-in duration-700">
                             <div className="w-20 h-20 bg-[#1a73e8] rounded-3xl mx-auto mb-8 flex items-center justify-center text-white shadow-lg rotate-3">
-                                {PackageCheck ? <PackageCheck size={40} /> : "📦"}
+                                <Icon name={PackageCheck} size={40} />
                             </div>
                             <h1 className="text-2xl font-bold mb-2">Kawas Coffee</h1>
                             <p className="text-[#5F6368] text-sm mb-10">Bodega e Inventario</p>
@@ -169,7 +183,7 @@
                                 <input 
                                     type="password" 
                                     maxLength={4}
-                                    placeholder="PIN Acceso"
+                                    placeholder="PIN"
                                     value={pin}
                                     onChange={e => setPin(e.target.value)}
                                     className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] focus:ring-4 focus:ring-blue-100 outline-none transition-all border-2 border-transparent focus:border-blue-200"
@@ -189,23 +203,23 @@
                     <aside className="hidden lg:flex flex-col w-64 bg-white border-r border-[#E0E0E0] fixed h-full z-20">
                         <div className="p-8">
                             <div className="flex items-center gap-3 text-[#1a73e8]">
-                                {PackageCheck && <PackageCheck size={32} />}
+                                <Icon name={PackageCheck} size={32} />
                                 <span className="font-bold text-xl tracking-tight">Kawas Stock</span>
                             </div>
                         </div>
                         <nav className="flex-1 px-4 space-y-2">
                             {[
-                                { id: 'dashboard', label: 'Inicio', icon: Home ? <Home size={20} /> : "🏠" },
-                                { id: 'inventory', label: 'Bodega', icon: Search ? <Search size={20} /> : "🔍" },
-                                { id: 'history', label: 'Historial', icon: History ? <History size={20} /> : "📜" },
-                                { id: 'reports', label: 'Reportes', icon: FileText ? <FileText size={20} /> : "📊" },
+                                { id: 'dashboard', label: 'Inicio', icon: Home },
+                                { id: 'inventory', label: 'Bodega', icon: Search },
+                                { id: 'history', label: 'Historial', icon: History },
+                                { id: 'reports', label: 'Reportes', icon: FileText },
                             ].map(item => (
                                 <button 
                                     key={item.id}
                                     onClick={() => setView(item.id)}
                                     className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all ${view === item.id ? 'bg-[#E8F0FE] text-[#1a73e8] font-bold' : 'text-[#5F6368] hover:bg-[#F1F3F4]'}`}
                                 >
-                                    {item.icon} {item.label}
+                                    <Icon name={item.icon} size={20} /> {item.label}
                                 </button>
                             ))}
                         </nav>
@@ -236,17 +250,17 @@
                                         disabled={isSyncing}
                                         className="flex items-center gap-2 px-4 py-2 bg-white border border-[#E0E0E0] rounded-xl shadow-sm hover:shadow-md transition-all active:scale-95"
                                     >
-                                        {RefreshCcw && <RefreshCcw size={18} className={isSyncing ? 'animate-spin text-blue-600' : ''} />}
+                                        <Icon name={RefreshCcw} size={18} className={isSyncing ? 'animate-spin text-blue-600' : ''} />
                                         <span className="text-sm font-bold">Sincronizar</span>
                                     </button>
                                 </div>
 
                                 {stats.outOfStock > 0 && (
-                                    <div className="bg-red-600 text-white p-6 rounded-[32px] shadow-xl shadow-red-100">
+                                    <div className="bg-red-600 text-white p-6 rounded-[32px] shadow-xl shadow-red-100 animate-in slide-in-from-top-4 duration-300">
                                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                             <div className="flex items-start gap-4">
                                                 <div className="bg-white/20 p-3 rounded-2xl shrink-0 animate-pulse">
-                                                    {XCircle && <XCircle size={32} />}
+                                                    <Icon name={XCircle} size={32} />
                                                 </div>
                                                 <div>
                                                     <h4 className="text-xl font-black">ACCIÓN REQUERIDA: STOCK AGOTADO</h4>
@@ -272,14 +286,14 @@
 
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     {[
-                                        { label: 'Ítems Totales', val: stats.totalItems, icon: Package && <Package />, color: 'text-blue-600', bg: 'bg-blue-50' },
-                                        { label: 'Stock Crítico', val: stats.criticalItems, icon: AlertTriangle && <AlertTriangle />, color: 'text-amber-600', bg: 'bg-amber-50' },
-                                        { label: 'Agotados', val: stats.outOfStock, icon: TrendingDown && <TrendingDown />, color: 'text-red-600', bg: 'bg-red-50' },
-                                        { label: 'Disponibilidad', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%`, icon: CheckCircle2 && <CheckCircle2 />, color: 'text-green-600', bg: 'bg-green-50' },
+                                        { label: 'Ítems Totales', val: stats.totalItems, icon: Package, color: 'text-blue-600', bg: 'bg-blue-50' },
+                                        { label: 'Stock Crítico', val: stats.criticalItems, icon: AlertTriangle, color: 'text-amber-600', bg: 'bg-amber-50' },
+                                        { label: 'Agotados', val: stats.outOfStock, icon: TrendingDown, color: 'text-red-600', bg: 'bg-red-50' },
+                                        { label: 'Disponibilidad', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%`, icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-50' },
                                     ].map((kpi, i) => (
                                         <div key={i} className="bg-white p-5 rounded-[28px] border border-[#E0E0E0] shadow-sm">
                                             <div className={`w-10 h-10 ${kpi.bg} ${kpi.color} rounded-xl flex items-center justify-center mb-3`}>
-                                                {kpi.icon || "📦"}
+                                                <Icon name={kpi.icon} size={24} />
                                             </div>
                                             <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">{kpi.label}</p>
                                             <p className="text-2xl font-black mt-1">{kpi.val}</p>
@@ -292,7 +306,7 @@
                                         <div key={cat.name} className={`bg-white p-6 rounded-[32px] border transition-all hover:shadow-lg ${cat.outOfStock > 0 ? 'border-red-300' : 'border-[#E0E0E0]'}`}>
                                             <div className="flex justify-between items-start mb-4">
                                                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${cat.outOfStock > 0 ? 'bg-red-600 text-white' : 'bg-[#F1F3F4] text-[#1a73e8]'}`}>
-                                                    {Package && <Package size={24} />}
+                                                    <Icon name={Package} size={24} />
                                                 </div>
                                                 {cat.outOfStock > 0 && <span className="bg-red-600 text-white px-3 py-1 rounded-full text-[9px] font-black animate-pulse">{cat.outOfStock} AGOTADOS</span>}
                                             </div>
@@ -308,10 +322,10 @@
 
                         {/* Inventory View */}
                         {view === 'inventory' && (
-                            <div className="space-y-6">
+                            <div className="space-y-6 animate-in slide-in-from-bottom-4">
                                 <div className="sticky top-0 z-10 bg-[#F8F9FA]/90 backdrop-blur-md pb-4 pt-2">
                                     <div className="relative">
-                                        {Search && <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-[#5F6368]" size={24} />}
+                                        <Icon name={Search} className="absolute left-5 top-1/2 -translate-y-1/2 text-[#5F6368]" size={24} />
                                         <input 
                                             type="text" 
                                             placeholder="Buscar materiales..."
@@ -330,7 +344,7 @@
                                             <div key={m.id} className={`bg-white p-6 rounded-[32px] border flex flex-col md:flex-row md:items-center justify-between gap-6 ${isOutOfStock ? 'border-red-400 bg-red-50/10 shadow-lg shadow-red-50' : isCritical ? 'border-amber-300' : 'border-[#E0E0E0]'}`}>
                                                 <div className="flex items-center gap-5">
                                                     <div className={`w-16 h-16 rounded-2xl flex items-center justify-center ${isOutOfStock ? 'bg-red-600 text-white' : isCritical ? 'bg-amber-100 text-amber-600' : 'bg-green-50 text-green-600'}`}>
-                                                        {Package && <Package size={32} />}
+                                                        <Icon name={Package} size={32} />
                                                     </div>
                                                     <div>
                                                         <p className="text-[10px] font-bold text-[#5F6368] uppercase">{m.categoria} {isOutOfStock && '• AGOTADO'}</p>
@@ -340,7 +354,7 @@
                                                 <div className="flex gap-8 px-4 text-center">
                                                     <div>
                                                         <p className="text-[10px] font-bold text-[#5F6368] uppercase">Stock</p>
-                                                        <p className={`text-2xl font-black ${isOutOfStock ? 'text-red-600' : isCritical ? 'text-amber-600' : 'text-[#202124]'}`}>{m.stock}</p>
+                                                        <p className={`text-2xl font-black ${isOutOfStock ? 'text-red-600 animate-pulse' : isCritical ? 'text-amber-600' : 'text-[#202124]'}`}>{m.stock}</p>
                                                     </div>
                                                     <div>
                                                         <p className="text-[10px] font-bold text-[#5F6368] uppercase">Días</p>
@@ -348,9 +362,9 @@
                                                     </div>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => { setSelectedMaterial(m); setModalType('IN'); }} className="p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all">{Plus ? <Plus size={24}/> : "+"}</button>
-                                                    <button disabled={isOutOfStock} onClick={() => { setSelectedMaterial(m); setModalType('OUT'); }} className={`p-4 rounded-2xl transition-all ${isOutOfStock ? 'bg-gray-100 text-gray-300' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}>{TrendingDown ? <TrendingDown size={24}/> : "-"}</button>
-                                                    <button onClick={() => { setSelectedMaterial(m); setModalType('ADJUST'); }} className="p-4 bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-700 hover:text-white transition-all">{SlidersHorizontal ? <SlidersHorizontal size={24}/> : "⚙️"}</button>
+                                                    <button onClick={() => { setSelectedMaterial(m); setModalType('IN'); }} className="p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-all"><Icon name={Plus} size={24}/></button>
+                                                    <button disabled={isOutOfStock} onClick={() => { setSelectedMaterial(m); setModalType('OUT'); }} className={`p-4 rounded-2xl transition-all ${isOutOfStock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name={TrendingDown} size={24}/></button>
+                                                    <button onClick={() => { setSelectedMaterial(m); setModalType('ADJUST'); }} className="p-4 bg-gray-100 text-gray-600 rounded-2xl hover:bg-gray-700 hover:text-white transition-all"><Icon name={SlidersHorizontal} size={24}/></button>
                                                 </div>
                                             </div>
                                         );
@@ -361,10 +375,10 @@
 
                         {/* History View */}
                         {view === 'history' && (
-                            <div className="bg-white rounded-[32px] border border-[#E0E0E0] overflow-hidden shadow-sm">
+                            <div className="bg-white rounded-[32px] border border-[#E0E0E0] overflow-hidden shadow-sm animate-in fade-in">
                                 <div className="p-8 border-b border-[#F1F3F4] flex items-center justify-between">
-                                    <div className="flex items-center gap-3">{History && <History className="text-blue-600" size={24}/><h3 className="text-xl font-bold">Bitácora</h3></div>
-                                    <button onClick={fetchData} className="p-2 hover:bg-[#F1F3F4] rounded-full transition-colors">{RefreshCcw && <RefreshCcw size={20}/>}</button>
+                                    <div className="flex items-center gap-3"><Icon name={History} className="text-blue-600" size={24}/><h3 className="text-xl font-bold">Bitácora</h3></div>
+                                    <button onClick={fetchData} className="p-2 hover:bg-[#F1F3F4] rounded-full transition-colors"><Icon name={RefreshCcw} size={20}/></button>
                                 </div>
                                 <div className="overflow-x-auto no-scrollbar">
                                     <table className="w-full text-left">
@@ -388,14 +402,14 @@
 
                         {/* Reports View */}
                         {view === 'reports' && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group">
-                                    <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6">{FileText && <FileText size={40} />}</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in">
+                                <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group hover:shadow-xl transition-all">
+                                    <div className="w-20 h-20 bg-red-50 text-red-600 rounded-3xl flex items-center justify-center mx-auto mb-6"><Icon name={FileText} size={40} /></div>
                                     <h3 className="text-2xl font-bold mb-4">Stock PDF</h3>
                                     <button onClick={() => window.print()} className="w-full py-5 bg-[#F1F3F4] text-[#202124] rounded-full font-bold hover:bg-[#E0E0E0] transition-all flex items-center justify-center gap-2">Descargar PDF</button>
                                 </div>
-                                <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group">
-                                    <div className="w-20 h-20 bg-green-50 text-green-600 rounded-3xl flex items-center justify-center mx-auto mb-6">{ExternalLink && <ExternalLink size={40} />}</div>
+                                <div className="bg-white p-10 rounded-[40px] border border-[#E0E0E0] text-center group hover:shadow-xl transition-all">
+                                    <div className="w-20 h-20 bg-green-50 text-green-600 rounded-3xl flex items-center justify-center mx-auto mb-6"><Icon name={ExternalLink} size={40} /></div>
                                     <h3 className="text-2xl font-bold mb-4">Excel Google Drive</h3>
                                     <button onClick={() => window.open('https://docs.google.com/spreadsheets/', '_blank')} className="w-full py-5 bg-[#1a73e8] text-white rounded-full font-bold shadow-xl hover:bg-[#1557b0] transition-all flex items-center justify-center gap-2">Abrir Planilla</button>
                                 </div>
@@ -406,13 +420,13 @@
                     {/* Footer Nav Mobile */}
                     <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-[#E0E0E0] px-4 py-4 z-40 flex justify-around items-center rounded-t-[30px] shadow-2xl">
                         {[
-                            { id: 'dashboard', icon: LayoutDashboard ? <LayoutDashboard size={24} /> : "🏠", label: 'Inicio' },
-                            { id: 'inventory', icon: Search ? <Search size={24} /> : "🔍", label: 'Bodega' },
-                            { id: 'history', icon: History ? <History size={24} /> : "📜", label: 'Bitácora' },
-                            { id: 'reports', icon: FileText ? <FileText size={24} /> : "📊", label: 'Reportes' },
+                            { id: 'dashboard', icon: LayoutDashboard, label: 'Inicio' },
+                            { id: 'inventory', icon: Search, label: 'Bodega' },
+                            { id: 'history', icon: History, label: 'Bitácora' },
+                            { id: 'reports', icon: FileText, label: 'Reportes' },
                         ].map(item => (
                             <button key={item.id} onClick={() => setView(item.id)} className={`flex flex-col items-center gap-1 p-2 transition-all ${view === item.id ? 'text-blue-600' : 'text-[#BDC1C6]'}`}>
-                                <div className={`p-2 px-6 rounded-full ${view === item.id ? 'bg-blue-50' : ''}`}>{item.icon}</div>
+                                <div className={`p-2 px-6 rounded-full ${view === item.id ? 'bg-blue-50' : ''}`}><Icon name={item.icon} size={24} /></div>
                                 <span className="text-[10px] font-black uppercase tracking-widest">{item.label}</span>
                             </button>
                         ))}
@@ -421,7 +435,7 @@
                     {/* Modal Movimientos */}
                     {modalType && (
                         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-                            <div className="absolute inset-0 bg-[#202124]/40 backdrop-blur-sm" onClick={() => !isLoading && setModalType(null)}></div>
+                            <div className="absolute inset-0 bg-[#202124]/40 backdrop-blur-sm animate-in fade-in" onClick={() => !isLoading && setModalType(null)}></div>
                             <div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl z-10 overflow-hidden animate-in zoom-in-95 border border-[#E0E0E0]">
                                 <div className={`p-8 text-white ${modalType === 'IN' ? 'bg-green-600' : modalType === 'OUT' ? 'bg-red-600' : 'bg-gray-800'}`}>
                                     <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Registrar {modalType}</p>
@@ -449,16 +463,16 @@
                                 }}>
                                     <div className="space-y-1">
                                         <label className="text-xs font-black text-[#5F6368] uppercase ml-1">Cantidad ({selectedMaterial?.unidad})</label>
-                                        <input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-3xl outline-none text-2xl font-black" placeholder="0.00" autoFocus />
+                                        <input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-3xl outline-none text-2xl font-black focus:ring-4 focus:ring-blue-100 transition-all" placeholder="0.00" autoFocus />
                                     </div>
                                     <div className="space-y-1">
                                         <label className="text-xs font-black text-[#5F6368] uppercase ml-1">Comentario</label>
-                                        <input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-2xl outline-none text-sm font-medium" placeholder="Opcional..." />
+                                        <input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-2xl outline-none text-sm font-medium focus:ring-4 focus:ring-blue-100 transition-all" placeholder="Opcional..." />
                                     </div>
                                     <div className="flex gap-4 pt-4">
-                                        <button type="button" onClick={() => setModalType(null)} className="flex-1 py-4 font-bold text-[#5F6368]">Cancelar</button>
-                                        <button disabled={isLoading} className="flex-[2] py-4 bg-[#1a73e8] text-white rounded-3xl font-bold shadow-xl flex items-center justify-center gap-2">
-                                            {isLoading ? <Loader2 className="animate-spin" /> : 'Confirmar'}
+                                        <button type="button" onClick={() => setModalType(null)} className="flex-1 py-4 font-bold text-[#5F6368] hover:bg-gray-100 rounded-2xl transition-all">Cancelar</button>
+                                        <button disabled={isLoading} className="flex-[2] py-4 bg-[#1a73e8] text-white rounded-3xl font-bold shadow-xl flex items-center justify-center gap-2 hover:bg-[#1557b0] transition-all active:scale-95 disabled:opacity-50">
+                                            {isLoading ? <Icon name={Loader2} className="animate-spin" /> : 'Confirmar'}
                                         </button>
                                     </div>
                                 </form>
@@ -469,7 +483,9 @@
             );
         };
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
+        // Renderizado final
+        const rootElement = document.getElementById('root');
+        const root = ReactDOM.createRoot(rootElement);
         root.render(<App />);
     </script>
 </body>
