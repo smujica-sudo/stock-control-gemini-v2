@@ -13,7 +13,7 @@
         window.addEventListener('error', function(event) {
             var root = document.getElementById('root');
             if(root) {
-                root.innerHTML = '<div style="padding:30px; font-family:sans-serif; color:#d93025; background:#fce8e6; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;"><h2>⚠️ Excepción del Sistema</h2><p>Se ha producido un error durante el procesamiento de los datos.</p><p style="font-size:11px; margin-top:10px; color:#5F6368;">' + event.message + '</p><button onclick="window.location.reload()" style="margin-top:25px; padding:12px 24px; background:#d93025; color:white; border:none; border-radius:24px; font-weight:bold; cursor:pointer;">Reiniciar Aplicación</button></div>';
+                root.innerHTML = '<div style="padding:30px; font-family:sans-serif; color:#d93025; background:#fce8e6; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;"><h2>⚠️ Excepción del Sistema</h2><p>Ocurrió un problema procesando los datos.</p><p style="font-size:11px; margin-top:10px; color:#5F6368;">' + event.message + '</p><button onclick="window.location.reload()" style="margin-top:25px; padding:12px 24px; background:#d93025; color:white; border:none; border-radius:24px; font-weight:bold; cursor:pointer;">Reiniciar Aplicación</button></div>';
             }
         });
     </script>
@@ -41,7 +41,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Tipografía de Íconos Google */
+        /* Estilo Material Symbols 2.2 */
         .material-symbols-rounded {
             font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
             display: inline-block;
@@ -49,16 +49,13 @@
             white-space: nowrap;
             direction: ltr;
             -webkit-font-smoothing: antialiased;
-            transition: all 0.3s ease;
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         
-        /* Aceleración de GPU */
         .gpu-accelerated { transform: translateZ(0); will-change: transform, opacity; }
         
-        /* Animaciones Interfaz Suave */
         .nav-card:active { transform: scale(0.96); transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1); }
         .action-button:active { transform: scale(0.88); transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1); }
         
@@ -68,38 +65,30 @@
         @keyframes fadeInUp { from { opacity: 0; transform: translate3d(0, 15px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
         .fade-in-up { animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
 
-        /* ESTILOS DE IMPRESIÓN */
         @media print {
             @page { margin: 10mm; size: auto; }
             body { background-color: white !important; }
-            .no-print, aside, header, nav, .action-button, .search-bar, .sync-status { display: none !important; }
+            .no-print, aside, header, nav, .action-button, .search-bar { display: none !important; }
             main { margin: 0 !important; padding: 0 !important; }
             .report-container { box-shadow: none !important; border: none !important; border-radius: 0 !important; padding: 0 !important; }
             .page-break { page-break-before: always; }
             .avoid-break { page-break-inside: avoid; }
-            .print-table { width: 100% !important; border-collapse: collapse !important; margin-bottom: 20px; }
-            .print-table th, .print-table td { border: 1px solid #E0E0E0 !important; padding: 10px !important; font-size: 11px !important; }
-            .print-table thead { background-color: #F8F9FA !important; -webkit-print-color-adjust: exact; }
-            .print-badge-red { background-color: #fce8e6 !important; color: #d93025 !important; border: 1px solid #d93025; font-weight: bold; }
-            .print-badge-amber { background-color: #fef7e0 !important; color: #e37400 !important; border: 1px solid #e37400; font-weight: bold; }
+            .print-table { width: 100% !important; border-collapse: collapse !important; }
+            .print-table th, .print-table td { border: 1px solid #E0E0E0 !important; padding: 12px !important; }
+            .print-badge-red { background-color: #fce8e6 !important; color: #d93025 !important; border: 1px solid #d93025; }
+            .print-badge-amber { background-color: #fef7e0 !important; color: #e37400 !important; border: 1px solid #e37400; }
         }
     </style>
 </head>
 <body>
-    <div id="root">
-        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:#1a73e8;font-family:sans-serif;">
-            <div style="width:48px;height:48px;border:4px solid #E8F0FE;border-top:4px solid #1a73e8;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-            <p style="margin-top:24px;font-weight:700;font-size:1.1rem;letter-spacing:-0.5px;">Inicializando el sistema operativo...</p>
-        </div>
-    </div>
+    <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useDeferredValue, memo } = React;
 
-        // --- CONFIGURACIÓN DE SEGURIDAD ---
         const MASTER_PIN = "9988"; 
+        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbye0BCOskWfd-jep9i605zmPGM0VLS3XYphKeHiYkKOSAWK8Jzwx0U7LnCLeVqJgjqohg/exec";
 
-        // --- COMPONENTE ICONO MATERIAL SYMBOLS ("LEAN & SLEEK") ---
         const Icon = memo(({ name, size = 24, className = "", spin = false, fill = false }) => {
             return (
                 <span 
@@ -114,145 +103,100 @@
             );
         });
 
-        // --- INTELIGENCIA DE ÍCONOS (ENFOQUE TOSTADURÍA) ---
         const getItemIcon = (categoria = '', subcategoria = '', nombre = '') => {
             const text = `${categoria} ${subcategoria} ${nombre}`.toLowerCase();
-            
             if (text.includes('vaso') || text.includes('copa') || text.includes('mug') || text.includes('taza') || text.includes('botella')) return 'local_drink';
             if (text.includes('tapa') || text.includes('bombilla') || text.includes('pajilla') || text.includes('fajilla') || text.includes('manga') || text.includes('revolvedor') || text.includes('servilleta') || text.includes('porta')) return 'takeout_dining';
-            if (text.includes('bolsa') || text.includes('sacola') || text.includes('valvula')) return 'shopping_bag';
+            if (text.includes('bolsa')) return 'shopping_bag';
             if (text.includes('caja') || text.includes('carton') || text.includes('cartón') || text.includes('empaque') || text.includes('packaging')) return 'inventory_2';
-            if (text.includes('equipo') || text.includes('maquina') || text.includes('repuesto') || text.includes('filtro') || text.includes('herramienta') || text.includes('mantenimiento') || text.includes('tostadora') || text.includes('molino')) return 'handyman';
-            if (text.includes('limpieza') || text.includes('aseo') || text.includes('cloro') || text.includes('detergente') || text.includes('jabon') || text.includes('jabón') || text.includes('basura') || text.includes('esponja') || text.includes('sanitizante') || text.includes('paño')) return 'sanitizer';
-            if (text.includes('merchandising') || text.includes('ropa') || text.includes('polera') || text.includes('jockey') || text.includes('delantal') || text.includes('tote')) return 'checkroom';
-            if (text.includes('etiqueta') || text.includes('adhesivo') || text.includes('sticker')) return 'label';
-            if (text.includes('papel') || text.includes('oficina') || text.includes('boleta') || text.includes('impresora') || text.includes('tinta') || text.includes('rollo') || text.includes('termico')) return 'receipt_long';
-            if (text.includes('café') || text.includes('cafe') || text.includes('grano') || text.includes('espresso') || text.includes('decaf') || text.includes('verde') || text.includes('tueste') || text.includes('origen')) return 'coffee';
-            if (text.includes('té') || text.includes('te ') || text.includes('matcha') || text.includes('chai') || text.includes('infusión') || text.includes('hoja')) return 'emoji_food_beverage';
-            if (text.includes('leche') || text.includes('lacteo') || text.includes('lácteo') || text.includes('avena') || text.includes('almendra') || text.includes('soya') || text.includes('entera') || text.includes('descremada')) return 'water_drop';
-            if (text.includes('sirope') || text.includes('jarabe') || text.includes('salsa') || text.includes('esencia') || text.includes('saborizante') || text.includes('vainilla') || text.includes('caramelo') || text.includes('avellana') || text.includes('puré')) return 'liquor';
-            if (text.includes('hielo') || text.includes('cold') || text.includes('frio') || text.includes('frío') || text.includes('frappe')) return 'ac_unit';
-            if (text.includes('azucar') || text.includes('azúcar') || text.includes('endulzante') || text.includes('stevia') || text.includes('cacao') || text.includes('canela') || text.includes('polvo')) return 'grain';
-            if (text.includes('pasteleria') || text.includes('comida') || text.includes('alimento') || text.includes('galleta') || text.includes('pan') || text.includes('croissant') || text.includes('muffin') || text.includes('torta') || text.includes('postre') || text.includes('sandwich')) return 'bakery_dining';
-            
+            if (text.includes('equipo') || text.includes('maquina') || text.includes('repuesto') || text.includes('filtro') || text.includes('herramienta') || text.includes('mantenimiento') || text.includes('tostadora')) return 'handyman';
+            if (text.includes('limpieza') || text.includes('aseo') || text.includes('cloro') || text.includes('detergente') || text.includes('jabon') || text.includes('jabón') || text.includes('sanitizante') || text.includes('paño')) return 'sanitizer';
+            if (text.includes('merchandising') || text.includes('ropa') || text.includes('polera') || text.includes('jockey') || text.includes('delantal')) return 'checkroom';
+            if (text.includes('café') || text.includes('cafe') || text.includes('grano') || text.includes('espresso') || text.includes('verde')) return 'coffee';
+            if (text.includes('té') || text.includes('matcha') || text.includes('chai') || text.includes('infusión')) return 'emoji_food_beverage';
+            if (text.includes('leche') || text.includes('avena') || text.includes('almendra')) return 'water_drop';
+            if (text.includes('sirope') || text.includes('jarabe') || text.includes('vainilla') || text.includes('puré')) return 'liquor';
+            if (text.includes('hielo') || text.includes('cold') || text.includes('frappe')) return 'ac_unit';
+            if (text.includes('azucar') || text.includes('azúcar') || text.includes('endulzante') || text.includes('stevia') || text.includes('polvo')) return 'grain';
+            if (text.includes('pasteleria') || text.includes('galleta') || text.includes('pan') || text.includes('croissant') || text.includes('muffin') || text.includes('sandwich')) return 'bakery_dining';
             return 'package_2'; 
         };
 
-        const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbye0BCOskWfd-jep9i605zmPGM0VLS3XYphKeHiYkKOSAWK8Jzwx0U7LnCLeVqJgjqohg/exec";
-
         const App = () => {
-            // --- ESTADOS PRINCIPALES ---
             const [view, setView] = useState('login'); 
             const [user, setUser] = useState(null);
             const [pin, setPin] = useState('');
             const [data, setData] = useState({ materiales: [], movimientos: [], usuarios: [] });
             const [loginInfo, setLoginInfo] = useState(null);
-            
             const [searchTerm, setSearchTerm] = useState('');
             const deferredSearchTerm = useDeferredValue(searchTerm); 
-            
             const [isSyncing, setIsSyncing] = useState(false);
             const [isSaving, setIsSaving] = useState(false);
             const [syncError, setSyncError] = useState(null);
-            
             const [modalType, setModalType] = useState(null); 
             const [selectedMaterial, setSelectedMaterial] = useState(null);
             const [navPath, setNavPath] = useState({ category: null, subcategory: null, itemId: null });
-
             const [historyFilters, setHistoryFilters] = useState({ user: '', dateStart: '', dateEnd: '', category: '', subcategory: '', sort: 'date_desc' });
             const [showFilters, setShowFilters] = useState(false);
 
-            // --- AUTO-SCROLL AL TOPE DE PANTALLA ---
+            // Auto-scroll instantáneo al tope
             useEffect(() => {
-                if (view !== 'login') {
-                    window.scrollTo({ top: 0, behavior: 'auto' });
-                }
+                if (view !== 'login') window.scrollTo(0, 0);
             }, [view, navPath]);
 
             const triggerHaptic = useCallback(() => {
                 if ('vibrate' in navigator) navigator.vibrate([15, 30, 15]);
             }, []);
 
-            // --- LÓGICA DE RED ---
             const fetchData = useCallback(async () => {
-                if (!SCRIPT_URL) return;
-                setIsSyncing(true);
-                setSyncError(null);
+                setIsSyncing(true); setSyncError(null);
                 try {
                     const response = await fetch(SCRIPT_URL, { redirect: "follow" });
-                    if (!response.ok) throw new Error(`El servidor remoto ha rechazado la conexión (Código HTTP ${response.status}).`);
-                    const textResponse = await response.text();
-                    try {
-                        const json = JSON.parse(textResponse);
-                        if (json && json.materiales) setData(json);
-                    } catch (err) { throw new Error("La estructura de los datos recibidos no concuerda con el formato predeterminado."); }
+                    const text = await response.text();
+                    const json = JSON.parse(text);
+                    if (json && json.materiales) setData(json);
                 } catch (e) {
-                    console.error("Fallo durante el proceso de sincronización de datos:", e);
-                    setSyncError(e.message);
+                    setSyncError("Error de sincronización.");
                 } finally {
                     setIsSyncing(false);
                 }
             }, []);
 
-            useEffect(() => {
-                fetchData();
-            }, [fetchData]);
+            useEffect(() => { fetchData(); }, [fetchData]);
 
-            // --- LÓGICA DE LOGIN ---
             const attemptLogin = useCallback((currentPin) => {
                 if (data.materiales.length === 0) return; 
-                
-                const validUser = (data.usuarios || []).find(u => u.pin == currentPin) || 
-                                 (currentPin === MASTER_PIN ? { nombre: "Administrador del Sistema", rol: "Acceso Privilegiado" } : null);
-                
+                const validUser = (data.usuarios || []).find(u => u.pin == currentPin) || (currentPin === MASTER_PIN ? { nombre: "Admin Principal", rol: "Administrador" } : null);
                 if (validUser) {
                     setUser(validUser);
                     setLoginInfo({
                         date: new Date().toLocaleDateString(),
                         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                        version: "v2.3"
+                        version: "v2.4"
                     });
                     setView('dashboard');
                     triggerHaptic();
                 } else if (currentPin.length === 4) {
                     setPin('');
-                    alert("Las credenciales ingresadas son incorrectas. Por favor, proceda a intentarlo nuevamente.");
                     triggerHaptic();
                 }
             }, [data, triggerHaptic]);
 
             useEffect(() => {
-                if (pin.length === 4 && data.materiales.length > 0 && view === 'login') {
-                    attemptLogin(pin);
-                }
-            }, [data.materiales.length, pin, view, attemptLogin]);
+                if (pin.length === 4) attemptLogin(pin);
+            }, [pin, attemptLogin]);
 
             const handlePinChange = (e) => {
                 const val = e.target.value.replace(/[^0-9]/g, '');
                 setPin(val);
-                if (val.length === 4) {
-                    setTimeout(() => attemptLogin(val), 100);
-                }
             };
 
-            const handleLogout = useCallback(() => {
-                setUser(null);
-                setPin('');
-                setLoginInfo(null);
-                setView('login');
-                triggerHaptic();
-            }, [triggerHaptic]);
-
-            // --- LÓGICA DE MOVIMIENTOS (OPTIMISTIC UI) ---
             const handleTransaction = async (e) => {
                 e.preventDefault();
                 const qty = parseFloat(e.target.cantidad.value);
                 const nota = e.target.nota.value;
                 const matId = selectedMaterial.id;
-
-                setModalType(null);
-                triggerHaptic();
-                setIsSaving(true);
+                setModalType(null); triggerHaptic(); setIsSaving(true);
 
                 let nuevoStock = parseFloat(selectedMaterial.stock) || 0;
                 if (modalType === 'IN') nuevoStock += qty;
@@ -271,32 +215,25 @@
 
                 try {
                     await fetch(SCRIPT_URL, { method: 'POST', mode: 'no-cors', body: JSON.stringify({ action: 'movimiento', usuario: user.nombre, tipo: modalType, materialId: matId, cantidad: qty, nota: nota }) });
-                } catch (err) { console.error("Excepción detectada durante el registro de la transacción:", err); } 
+                } catch (err) { console.error(err); } 
                 finally { setIsSaving(false); }
             };
 
-            // --- MANEJADOR DE ORDENAMIENTO EN TABLA (INTERACTIVO) ---
             const handleSort = useCallback((column) => {
                 let newSort = '';
                 if (column === 'date') newSort = historyFilters.sort === 'date_desc' ? 'date_asc' : 'date_desc';
-                if (column === 'tipo') newSort = historyFilters.sort === 'tipo_asc' ? 'tipo_desc' : 'tipo_asc';
-                if (column === 'mat') newSort = historyFilters.sort === 'mat_asc' ? 'mat_desc' : 'mat_asc';
-                
+                else if (column === 'tipo') newSort = historyFilters.sort === 'tipo_asc' ? 'tipo_desc' : 'tipo_asc';
+                else if (column === 'mat') newSort = historyFilters.sort === 'mat_asc' ? 'mat_desc' : 'mat_asc';
                 setHistoryFilters(prev => ({ ...prev, sort: newSort }));
                 triggerHaptic();
             }, [historyFilters.sort, triggerHaptic]);
 
-            // --- ESTADÍSTICAS ---
             const stats = useMemo(() => {
                 const materiales = data.materiales || [];
                 const movimientos = data.movimientos || [];
-                
                 const totalItems = materiales.length;
                 const criticalList = materiales.filter(m => (parseFloat(m.stock) || 0) <= (parseFloat(m.minimo) || 0) && (parseFloat(m.stock) || 0) > 0);
-                const criticalItems = criticalList.length;
-                
                 const outOfStockList = materiales.filter(m => (parseFloat(m.stock) || 0) <= 0);
-                const outOfStock = outOfStockList.length;
 
                 const getDaysLeft = (materialId, currentStock) => {
                     const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -305,35 +242,37 @@
                     return totalConsumed <= 0 ? '---' : Math.round(parseFloat(currentStock) / (totalConsumed / 7));
                 };
 
-                const groupedInventory = {};
-                materiales.forEach(m => {
-                    const cat = m.categoria || 'Sin Categoría'; const subcat = m.subcategoria || 'General';
-                    if(!groupedInventory[cat]) groupedInventory[cat] = {};
-                    if(!groupedInventory[cat][subcat]) groupedInventory[cat][subcat] = [];
-                    groupedInventory[cat][subcat].push(m);
-                });
-
-                const categories = [...new Set(materiales.map(m => m.categoria || 'Sin Categoría'))];
-                const categoryStats = categories.map(cat => {
+                const categoryStats = [...new Set(materiales.map(m => m.categoria || 'Sin Categoría'))].map(cat => {
                     const items = materiales.filter(m => (m.categoria || 'Sin Categoría') === cat);
                     return {
-                        name: cat,
-                        total: items.length,
+                        name: cat, total: items.length,
                         critical: items.filter(m => (parseFloat(m.stock) || 0) <= (parseFloat(m.minimo) || 0) && (parseFloat(m.stock) || 0) > 0).length,
                         outOfStock: items.filter(m => (parseFloat(m.stock) || 0) <= 0).length
                     };
                 }).sort((a, b) => b.total - a.total);
 
-                return { totalItems, criticalItems, criticalList, outOfStock, outOfStockList, getDaysLeft, groupedInventory, categoryStats };
+                return { totalItems, criticalItems: criticalList.length, criticalList, outOfStock: outOfStockList.length, outOfStockList, getDaysLeft, categoryStats };
             }, [data]);
 
-            // Navegación Jerárquica
             const navigationData = useMemo(() => {
                 const materiales = data.materiales || [];
                 if (deferredSearchTerm) return { level: 'search', items: materiales.filter(m => (m.nombre || "").toLowerCase().includes(deferredSearchTerm.toLowerCase()) || (m.categoria || "").toLowerCase().includes(deferredSearchTerm.toLowerCase()))};
                 
-                if (!navPath.category) return { level: 'categories', items: [...new Set(materiales.map(m => m.categoria).filter(Boolean))].map(name => ({ name, count: materiales.filter(m => m.categoria === name).length, out: materiales.filter(m => m.categoria === name && (parseFloat(m.stock) || 0) <= 0).length }))};
+                // Categorías con Métricas y Color de Estado
+                if (!navPath.category) return { 
+                    level: 'categories', 
+                    items: [...new Set(materiales.map(m => m.categoria).filter(Boolean))].map(name => {
+                        const catItems = materiales.filter(m => m.categoria === name);
+                        return { 
+                            name, 
+                            count: catItems.length, 
+                            out: catItems.filter(m => (parseFloat(m.stock) || 0) <= 0).length,
+                            critical: catItems.filter(m => (parseFloat(m.stock) || 0) <= (parseFloat(m.minimo) || 0) && (parseFloat(m.stock) || 0) > 0).length
+                        };
+                    })
+                };
                 
+                // Subcategorías Compactas
                 if (!navPath.subcategory) return { 
                     level: 'subcategories', 
                     items: [...new Set(materiales.filter(m => m.categoria === navPath.category).map(m => m.subcategoria || 'General'))].map(name => {
@@ -348,67 +287,37 @@
                 };
                 
                 if (!navPath.itemId) return { level: 'items', items: materiales.filter(m => m.categoria === navPath.category && (m.subcategoria || 'General') === navPath.subcategory) };
-                
                 return { level: 'detail', item: materiales.find(m => m.id == navPath.itemId), movements: (data.movimientos || []).filter(mov => mov.item_id == navPath.itemId) };
             }, [data.materiales, navPath, deferredSearchTerm]);
 
-            const resetNav = useCallback(() => setNavPath({ category: null, subcategory: null, itemId: null }), []);
+            const historyData = useMemo(() => {
+                let movs = [...(data.movimientos || [])];
+                const matDict = {}; (data.materiales || []).forEach(m => { matDict[m.id] = m; });
+                movs = movs.map(m => ({ ...m, subcategoria: matDict[m.item_id]?.subcategoria || 'General', categoria_real: matDict[m.item_id]?.categoria || m.categoria || 'Sin Categoría' }));
+                
+                if (historyFilters.user) movs = movs.filter(m => m.usuario === historyFilters.user);
+                if (historyFilters.category) movs = movs.filter(m => m.categoria_real === historyFilters.category);
+                if (historyFilters.subcategory) movs = movs.filter(m => m.subcategoria === historyFilters.subcategory);
+                if (historyFilters.dateStart) movs = movs.filter(m => new Date(m.timestamp) >= new Date(historyFilters.dateStart + "T00:00:00"));
+                if (historyFilters.dateEnd) movs = movs.filter(m => new Date(m.timestamp) <= new Date(historyFilters.dateEnd + "T23:59:59"));
+
+                movs.sort((a, b) => {
+                    if (historyFilters.sort === 'date_desc') return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
+                    if (historyFilters.sort === 'date_asc') return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
+                    return 0;
+                });
+
+                const uniqueUsers = [...new Set([...(data.usuarios || []).map(u => u.nombre), ...(data.movimientos || []).map(m => m.usuario)].filter(Boolean))].sort();
+                const uniqueCategories = [...new Set((data.materiales || []).map(m => m.categoria).filter(Boolean))];
+                let uniqueSubcategories = historyFilters.category ? [...new Set((data.materiales || []).filter(m => m.categoria === historyFilters.category).map(m => m.subcategoria || 'General'))] : [...new Set((data.materiales || []).map(m => m.subcategoria || 'General').filter(Boolean))];
+                return { movs, uniqueUsers, uniqueCategories, uniqueSubcategories };
+            }, [data, historyFilters]);
 
             const handleItemClick = useCallback((item) => {
                 setNavPath({ category: item.categoria, subcategory: item.subcategoria || 'General', itemId: item.id });
                 setSearchTerm(''); 
                 triggerHaptic();
             }, [triggerHaptic]);
-
-            // --- LÓGICA DE FILTROS Y ORDENAMIENTO (HISTORIAL) ---
-            const historyData = useMemo(() => {
-                let movs = [...(data.movimientos || [])];
-                const matDict = {};
-                (data.materiales || []).forEach(m => { matDict[m.id] = m; });
-                
-                movs = movs.map(m => ({
-                    ...m,
-                    subcategoria: matDict[m.item_id]?.subcategoria || 'General',
-                    categoria_real: matDict[m.item_id]?.categoria || m.categoria || 'Sin Categoría'
-                }));
-
-                if (historyFilters.user) movs = movs.filter(m => m.usuario === historyFilters.user);
-                if (historyFilters.category) movs = movs.filter(m => m.categoria_real === historyFilters.category);
-                if (historyFilters.subcategory) movs = movs.filter(m => m.subcategoria === historyFilters.subcategory);
-                if (historyFilters.dateStart) {
-                    const start = new Date(historyFilters.dateStart + "T00:00:00");
-                    movs = movs.filter(m => new Date(m.timestamp) >= start);
-                }
-                if (historyFilters.dateEnd) {
-                    const end = new Date(historyFilters.dateEnd + "T23:59:59");
-                    movs = movs.filter(m => new Date(m.timestamp) <= end);
-                }
-
-                movs.sort((a, b) => {
-                    if (historyFilters.sort === 'date_desc') return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
-                    if (historyFilters.sort === 'date_asc') return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
-                    if (historyFilters.sort === 'mat_asc') return (a.item_nombre || '').localeCompare(b.item_nombre || '');
-                    if (historyFilters.sort === 'mat_desc') return (b.item_nombre || '').localeCompare(a.item_nombre || '');
-                    if (historyFilters.sort === 'tipo_asc') return (a.tipo || '').localeCompare(b.tipo || '');
-                    if (historyFilters.sort === 'tipo_desc') return (b.tipo || '').localeCompare(a.tipo || '');
-                    return 0;
-                });
-
-                const uniqueUsers = [...new Set([
-                    ...(data.usuarios || []).map(u => u.nombre),
-                    ...(data.movimientos || []).map(m => m.usuario)
-                ].filter(Boolean))].sort();
-                
-                const uniqueCategories = [...new Set((data.materiales || []).map(m => m.categoria).filter(Boolean))];
-                let uniqueSubcategories = [];
-                if (historyFilters.category) {
-                    uniqueSubcategories = [...new Set((data.materiales || []).filter(m => m.categoria === historyFilters.category).map(m => m.subcategoria || 'General'))];
-                } else {
-                    uniqueSubcategories = [...new Set((data.materiales || []).map(m => m.subcategoria || 'General').filter(Boolean))];
-                }
-
-                return { movs, uniqueUsers, uniqueCategories, uniqueSubcategories };
-            }, [data.movimientos, data.materiales, data.usuarios, historyFilters]);
 
             const navItems = [
                 { id: 'dashboard', label: 'Inicio', icon: 'space_dashboard' },
@@ -417,185 +326,73 @@
                 { id: 'reports', label: 'Reportes', icon: 'analytics' },
             ];
 
-            // --- VISTA DE LOGIN ---
             if (view === 'login') {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-6 bg-[#F8F9FA]">
                         <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-xl border border-[#E0E0E0] text-center gpu-accelerated fade-in-up">
                             <div className="w-20 h-20 mx-auto mb-8 flex items-center justify-center">
                                 <img src="./logo.png" alt="K" className="w-full h-full object-contain drop-shadow-md" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-                                <div style={{display: 'none'}} className="w-20 h-20 bg-[#1a73e8] rounded-3xl flex-col items-center justify-center text-white shadow-lg shadow-blue-200">
-                                    <span className="text-5xl font-black font-sans leading-none">K</span>
-                                </div>
+                                <div style={{display: 'none'}} className="w-20 h-20 bg-[#1a73e8] rounded-3xl flex-col items-center justify-center text-white shadow-lg shadow-blue-200"><span className="text-5xl font-black font-sans leading-none">K</span></div>
                             </div>
                             <h1 className="text-3xl font-black tracking-tighter uppercase mb-2 text-[#202124]">Control de Inventario</h1>
-                            <p className="text-[#5F6368] text-sm mb-6 font-medium">Sistema de Gestión de Tostaduría</p>
-
-                            {syncError && (
-                                <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-left font-medium mb-6 text-xs">
-                                    <strong>Error de Conexión:</strong> {syncError}
-                                    <button onClick={fetchData} className="mt-2 block bg-red-100 px-3 py-1.5 rounded-lg w-full text-center hover:bg-red-200 transition-colors">Reintentar Conexión</button>
-                                </div>
-                            )}
-
-                            <div className="space-y-6">
-                                <input 
-                                    type="password" 
-                                    inputMode="numeric"
-                                    maxLength={4}
-                                    placeholder="Código de Acceso"
-                                    value={pin}
-                                    onChange={handlePinChange}
-                                    className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-2xl tracking-[0.5em] font-bold focus:ring-4 focus:ring-blue-100 outline-none transition-all border-2 border-transparent focus:border-blue-200"
-                                />
-                                <div className="h-4 flex items-center justify-center">
-                                    {isSyncing && data.materiales.length === 0 && <span className="text-xs font-bold text-blue-600 flex items-center gap-2"><Icon name="sync" size={14} spin /> Estableciendo conexión con el servidor...</span>}
-                                </div>
-                            </div>
+                            <p className="text-[#5F6368] text-sm mb-6 font-medium tracking-wide">Kawas Tostaduría de Café</p>
+                            <input type="password" inputMode="numeric" maxLength={4} placeholder="PIN" value={pin} onChange={handlePinChange} className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] font-bold focus:ring-4 focus:ring-blue-100 outline-none transition-all border-2 border-transparent focus:border-blue-200" autoFocus />
+                            <div className="mt-8 h-4 text-xs font-bold text-blue-600 flex items-center justify-center">{isSyncing && <span>Estableciendo conexión...</span>}</div>
                         </div>
                     </div>
                 );
             }
 
-            // --- INTERFAZ PRINCIPAL ---
             return (
                 <div className="min-h-screen bg-[#F8F9FA] text-[#202124] font-sans flex flex-col lg:flex-row">
-                    
-                    {/* BARRA LATERAL FIJA (SOLO DESKTOP) */}
-                    <aside className="no-print hidden lg:flex flex-col w-72 bg-white border-r border-[#E0E0E0] fixed h-full z-20">
-                        <div className="p-8">
-                            <div className="flex items-center gap-3">
-                                <img src="./logo.png" alt="K" className="w-10 h-10 object-contain shrink-0" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-                                <div style={{display: 'none'}} className="w-10 h-10 bg-[#1a73e8] rounded-xl flex-col items-center justify-center text-white shadow-md shadow-blue-200 shrink-0">
-                                    <span className="text-2xl font-black font-sans leading-none">K</span>
-                                </div>
-                                <span className="font-black text-xl tracking-tighter uppercase leading-tight text-[#202124]">Gestión de<br/>Inventario</span>
-                            </div>
-                        </div>
+                    <aside className="no-print hidden lg:flex flex-col w-64 bg-white border-r border-[#E0E0E0] fixed h-full z-20">
+                        <div className="p-8"><div className="flex items-center gap-3"><img src="./logo.png" alt="K" className="w-10 h-10 object-contain" /><span className="font-black text-xl tracking-tighter uppercase leading-tight text-[#202124]">Stock Control</span></div></div>
                         <nav className="flex-1 px-4 space-y-2">
                             {navItems.map(item => (
-                                <button 
-                                    key={item.id}
-                                    onClick={() => { setView(item.id); resetNav(); setSearchTerm(''); triggerHaptic(); }}
-                                    className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all ${view === item.id ? 'bg-[#E8F0FE] text-[#1a73e8] font-bold' : 'text-[#5F6368] hover:bg-[#F1F3F4] font-medium'}`}
-                                >
-                                    <Icon name={item.icon} size={22} fill={view === item.id} /> {item.label}
-                                </button>
+                                <button key={item.id} onClick={() => { setView(item.id); resetNav(); setSearchTerm(''); triggerHaptic(); }} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all ${view === item.id ? 'bg-[#E8F0FE] text-[#1a73e8] font-bold shadow-sm' : 'text-[#5F6368] hover:bg-[#F1F3F4] font-medium'}`}><Icon name={item.icon} size={22} fill={view === item.id} /> {item.label}</button>
                             ))}
                         </nav>
-                        
                         <div className="px-4 pb-6 mt-auto space-y-3">
-                            <button 
-                                onClick={() => { fetchData(); triggerHaptic(); }} 
-                                disabled={isSyncing}
-                                className={`w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl transition-all border shadow-sm font-bold active:scale-95 ${isSyncing ? 'bg-[#F1F3F4] border-[#E0E0E0] text-[#BDC1C6]' : 'bg-white border-[#E0E0E0] text-[#1a73e8] hover:bg-[#F8F9FA]'}`}
-                            >
-                                <Icon name="sync" size={20} spin={isSyncing} /> 
-                                <span className="text-sm">Sincronizar Datos</span>
-                            </button>
-                            <button 
-                                onClick={handleLogout} 
-                                className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl transition-all border border-transparent shadow-sm font-bold active:scale-95 bg-red-50 text-red-600 hover:bg-red-100"
-                            >
-                                <Icon name="logout" size={20} fill /> 
-                                <span className="text-sm">Cerrar Sesión</span>
-                            </button>
+                            <button onClick={fetchData} disabled={isSyncing} className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl border bg-white text-[#1a73e8] font-bold active:scale-95 shadow-sm hover:bg-[#F8F9FA]"><Icon name="sync" size={20} spin={isSyncing} /> <span className="text-sm">Sincronizar</span></button>
+                            <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl bg-red-50 text-red-600 font-bold active:scale-95 shadow-sm hover:bg-red-100"><Icon name="logout" size={20} fill /> <span className="text-sm">Cerrar Sesión</span></button>
                         </div>
-
-                        <div className="p-6 border-t border-[#F1F3F4]">
-                            <div className="flex items-center gap-3 p-3 bg-[#F8F9FA] rounded-2xl">
-                                <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">
-                                    {user?.nombre?.charAt(0)}
-                                </div>
-                                <div className="overflow-hidden">
-                                    <p className="text-xs font-bold truncate">{user?.nombre}</p>
-                                    <p className="text-[10px] text-[#5F6368] uppercase tracking-wider">{user?.rol}</p>
-                                </div>
-                            </div>
-                        </div>
+                        <div className="p-6 border-t border-[#F1F3F4]"><div className="flex items-center gap-3 p-3 bg-[#F8F9FA] rounded-2xl"><div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">{user?.nombre?.charAt(0)}</div><div className="overflow-hidden"><p className="text-xs font-bold truncate">{user?.nombre}</p><p className="text-[10px] text-[#5F6368] uppercase tracking-wider">{user?.rol}</p></div></div></div>
                     </aside>
-                    
-                    {/* CONTENIDO PRINCIPAL */}
-                    <main className="flex-1 lg:ml-72 p-4 lg:p-10 pb-28 lg:pb-10 max-w-[1400px] w-full mx-auto">
-                        
-                        {/* Header Superior Móvil */}
-                        <div className="lg:hidden flex items-center justify-between mb-6">
-                            <h2 className="text-lg font-black tracking-tighter uppercase text-[#202124] flex items-center gap-2">
-                                <img src="./logo.png" alt="K" className="w-8 h-8 object-contain shrink-0" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-                                <div style={{display: 'none'}} className="w-8 h-8 bg-[#1a73e8] rounded-[10px] flex-col items-center justify-center text-white shadow-sm shrink-0">
-                                    <span className="text-lg font-black font-sans leading-none">K</span>
-                                </div>
-                                Gestión Inventario
-                            </h2>
-                            <div className="flex items-center gap-3">
-                                <div className="flex items-center gap-2">
-                                    {isSaving && <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1"><Icon name="cloud_upload" size={14} /></span>}
-                                    {isSyncing && !isSaving && <span className="bg-gray-100 text-gray-500 px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1"><Icon name="sync" size={14} spin /></span>}
-                                </div>
-                                <button onClick={handleLogout} className="p-2 bg-red-50 text-red-600 rounded-xl active:scale-95 transition-transform flex items-center justify-center">
-                                    <Icon name="logout" size={20} fill />
-                                </button>
-                            </div>
-                        </div>
 
-                        {/* DASHBOARD */}
+                    <div className="lg:hidden no-print flex items-center justify-between p-4 bg-white border-b sticky top-0 z-30">
+                        <div className="flex items-center gap-2"><img src="./logo.png" alt="K" className="w-8 h-8 object-contain" /><span className="font-black text-lg tracking-tighter uppercase text-[#202124]">Stock Control</span></div>
+                        <button onClick={handleLogout} className="p-2 bg-red-50 text-red-600 rounded-xl active:scale-90"><Icon name="logout" size={20} fill /></button>
+                    </div>
+
+                    <main className="flex-1 lg:ml-64 p-4 lg:p-10 pb-28 lg:pb-10 max-w-[1400px] w-full mx-auto">
                         {view === 'dashboard' && (
                             <div className="space-y-8 fade-in-up">
                                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                                    <div>
-                                        <h2 className="text-3xl font-bold tracking-tight text-[#202124]">Control de Stock_Materiales</h2>
-                                        <p className="text-[#5F6368] mt-1 font-medium">Monitorización del estado de insumos críticos para las operaciones de producción.</p>
-                                    </div>
+                                    <div><h2 className="text-3xl font-bold tracking-tight text-[#202124]">Control de Stock_Materiales</h2><p className="text-[#5F6368] mt-1 font-medium text-sm md:text-base">Estado de insumos críticos para producción.</p></div>
                                     {loginInfo && (
                                         <div className="text-left md:text-right text-xs text-[#5F6368] font-medium bg-white px-5 py-3 rounded-2xl border border-[#E0E0E0] shadow-sm shrink-0 flex flex-col md:items-end">
-                                            <div className="flex items-center gap-2 mb-1.5">
-                                                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                                                <span className="font-bold text-[#202124]">Sesión Activa</span>
-                                            </div>
+                                            <div className="flex items-center gap-2 mb-1.5"><div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div><span className="font-bold text-[#202124]">Sesión Activa</span></div>
                                             <p className="mb-0.5">Operador: <span className="font-bold text-[#1a73e8]">{user?.nombre}</span></p>
                                             <p className="mb-0.5">Ingreso: {loginInfo.date} a las {loginInfo.time}</p>
-                                            <p className="text-[10px] mt-1 text-[#BDC1C6] font-bold tracking-widest">VERSIÓN {loginInfo.version}</p>
+                                            <p className="text-[10px] mt-1 text-[#BDC1C6] font-bold tracking-widest uppercase tracking-widest">VERSIÓN {loginInfo.version}</p>
                                         </div>
                                     )}
                                 </div>
 
-                                {/* Alerta Crítica Global Expandida (Diseño Ultra Premium) */}
                                 {(stats.outOfStock > 0 || stats.criticalItems > 0) && (
                                     <div className={`p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-xl fade-in-up ${stats.outOfStock > 0 ? 'bg-red-600 text-white shadow-red-200' : 'bg-amber-500 text-white shadow-amber-200'}`} style={{ animationDelay: '100ms' }}>
-                                        <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
                                             <div className="flex items-start gap-4 md:gap-5 w-full">
-                                                <div className="bg-white/20 p-3 md:p-4 rounded-2xl shrink-0 animate-pulse">
-                                                    <Icon name={stats.outOfStock > 0 ? "error" : "warning"} size={32} fill />
-                                                </div>
+                                                <div className="bg-white/20 p-3 md:p-4 rounded-2xl shrink-0 animate-pulse"><Icon name={stats.outOfStock > 0 ? "error" : "warning"} size={32} fill /></div>
                                                 <div className="w-full">
                                                     <h4 className="text-xl md:text-2xl font-black uppercase tracking-tight mb-1">Acción Requerida</h4>
                                                     <p className="text-white/90 text-sm mb-4">Los siguientes materiales requieren atención operativa inmediata:</p>
                                                     <div className="flex flex-wrap gap-2 md:gap-3">
                                                         {stats.outOfStockList.map(item => (
-                                                            <button 
-                                                                key={item.id} 
-                                                                onClick={() => { setView('inventory'); handleItemClick(item); }}
-                                                                className="bg-white/10 hover:bg-white/20 border border-white/20 pl-3 pr-4 py-2 rounded-2xl text-sm font-bold backdrop-blur-sm flex items-center gap-2 transition-all active:scale-95 text-left group"
-                                                            >
-                                                                <div className="bg-white/20 p-1.5 rounded-xl group-hover:bg-white/30 transition-colors">
-                                                                    <Icon name={getItemIcon(item.categoria, item.subcategoria, item.nombre)} size={18} /> 
-                                                                </div>
-                                                                <span className="truncate max-w-[150px] md:max-w-none">{item.nombre}</span>
-                                                                <span className="bg-red-800/80 text-white px-2 py-0.5 rounded-lg text-[10px] ml-1 shadow-sm">AGOTADO</span>
-                                                            </button>
+                                                            <button key={item.id} onClick={() => { setView('inventory'); handleItemClick(item); }} className="bg-white/10 hover:bg-white/20 border border-white/20 pl-3 pr-4 py-2 rounded-2xl text-sm font-bold backdrop-blur-sm flex items-center gap-2 transition-all active:scale-95 text-left group shadow-sm"><Icon name={getItemIcon(item.categoria, '', item.nombre)} size={18} /><span className="truncate max-w-[150px]">{item.nombre}</span><span className="bg-red-800/80 px-2 py-0.5 rounded text-[9px]">AGOTADO</span></button>
                                                         ))}
                                                         {stats.criticalList.map(item => (
-                                                            <button 
-                                                                key={item.id} 
-                                                                onClick={() => { setView('inventory'); handleItemClick(item); }}
-                                                                className="bg-white/10 hover:bg-white/20 border border-white/20 pl-3 pr-4 py-2 rounded-2xl text-sm font-bold backdrop-blur-sm flex items-center gap-2 transition-all active:scale-95 text-left group"
-                                                            >
-                                                                <div className="bg-white/20 p-1.5 rounded-xl group-hover:bg-white/30 transition-colors">
-                                                                    <Icon name={getItemIcon(item.categoria, item.subcategoria, item.nombre)} size={18} /> 
-                                                                </div>
-                                                                <span className="truncate max-w-[150px] md:max-w-none">{item.nombre}</span>
-                                                                <span className="bg-amber-700/80 text-white px-2 py-0.5 rounded-lg text-[10px] ml-1 shadow-sm">CRÍTICO</span>
-                                                            </button>
+                                                            <button key={item.id} onClick={() => { setView('inventory'); handleItemClick(item); }} className="bg-white/10 hover:bg-white/20 border border-white/20 pl-3 pr-4 py-2 rounded-2xl text-sm font-bold backdrop-blur-sm flex items-center gap-2 transition-all active:scale-95 text-left group shadow-sm"><Icon name={getItemIcon(item.categoria, '', item.nombre)} size={18} /><span className="truncate max-w-[150px]">{item.nombre}</span><span className="bg-amber-700/80 px-2 py-0.5 rounded text-[9px]">CRÍTICO</span></button>
                                                         ))}
                                                     </div>
                                                 </div>
@@ -604,13 +401,12 @@
                                     </div>
                                 )}
 
-                                {/* KPI Row */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                                     {[
-                                        { label: 'Total de Artículos', val: stats.totalItems, icon: 'category', color: 'text-blue-600', bg: 'bg-blue-50' },
+                                        { label: 'Ítems Totales', val: stats.totalItems, icon: 'category', color: 'text-blue-600', bg: 'bg-blue-50' },
                                         { label: 'Existencias Críticas', val: stats.criticalItems, icon: 'warning', color: 'text-amber-600', bg: 'bg-amber-50' },
                                         { label: 'Artículos Agotados', val: stats.outOfStock, icon: 'error', color: 'text-red-600', bg: 'bg-red-50' },
-                                        { label: 'Índice de Disponibilidad', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%`, icon: 'health_and_safety', color: 'text-green-600', bg: 'bg-green-50' },
+                                        { label: 'Salud Bodega', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%`, icon: 'health_and_safety', color: 'text-green-600', bg: 'bg-green-50' },
                                     ].map((kpi, i) => (
                                         <div key={i} className={`bg-white p-4 md:p-8 rounded-[24px] md:rounded-[40px] border shadow-sm ${kpi.label === 'Artículos Agotados' && stats.outOfStock > 0 ? 'border-red-300 shadow-red-100 shadow-lg' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${i * 50}ms` }}>
                                             <div className={`w-10 h-10 md:w-12 md:h-12 ${kpi.bg} ${kpi.color} rounded-xl md:rounded-2xl flex items-center justify-center mb-3 md:mb-4`}><Icon name={kpi.icon} size={24} fill /></div>
@@ -620,448 +416,137 @@
                                     ))}
                                 </div>
 
-                                {/* Desglose por Categoría */}
                                 <div className="mt-6 md:mt-12 fade-in-up" style={{ animationDelay: '200ms' }}>
                                     <h3 className="text-lg md:text-xl font-bold tracking-tight text-[#202124] mb-4 md:mb-6 flex items-center gap-2"><Icon name="pie_chart" size={24} className="text-[#1a73e8]" fill /> Análisis Detallado por Categorías</h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
                                         {stats.categoryStats.map((cat, idx) => (
-                                            <div 
-                                                key={idx} 
-                                                onClick={() => { 
-                                                    setView('inventory'); 
-                                                    resetNav(); 
-                                                    setNavPath({ category: cat.name, subcategory: null, itemId: null }); 
-                                                    triggerHaptic(); 
-                                                }} 
-                                                className={`bg-white p-4 md:p-8 rounded-[24px] md:rounded-[32px] border cursor-pointer hover:shadow-lg transition-all group nav-card ${cat.outOfStock > 0 ? 'border-red-300' : cat.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'}`}
-                                            >
+                                            <div key={idx} onClick={() => { setView('inventory'); resetNav(); setNavPath({ category: cat.name, subcategory: null, itemId: null }); triggerHaptic(); }} className={`bg-white p-4 md:p-8 rounded-[24px] md:rounded-[32px] border cursor-pointer hover:shadow-lg transition-all group nav-card ${cat.outOfStock > 0 ? 'border-red-300' : cat.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'}`}>
                                                 <div className="flex justify-between items-start mb-4">
                                                     <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-[20px] flex items-center justify-center transition-transform group-hover:scale-110 shrink-0 ${cat.outOfStock > 0 ? 'bg-red-50 text-red-600' : cat.critical > 0 ? 'bg-amber-50 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}><Icon name={getItemIcon(cat.name)} size={28} fill /></div>
                                                     <div className="flex flex-col gap-1 items-end ml-3">
-                                                        {cat.outOfStock > 0 && <span className="bg-red-600 text-white px-2 py-1 rounded-[10px] text-[9px] font-black animate-pulse flex items-center gap-1 shadow-sm"><Icon name="error" size={12} fill /> {cat.outOfStock} SIN EXISTENCIAS</span>}
-                                                        {cat.critical > 0 && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-[10px] text-[9px] font-black flex items-center gap-1"><Icon name="warning" size={12} fill /> {cat.critical} NIVEL CRÍTICO</span>}
-                                                        {cat.outOfStock === 0 && cat.critical === 0 && <span className="bg-green-50 text-green-600 px-2 py-1 rounded-[10px] text-[9px] font-black flex items-center gap-1"><Icon name="check_circle" size={12} fill /> NIVEL ÓPTIMO</span>}
+                                                        {cat.outOfStock > 0 && <span className="bg-red-600 text-white px-2 py-1 rounded-[10px] text-[9px] font-black animate-pulse flex items-center gap-1 shadow-sm"><Icon name="error" size={12} fill /> {cat.outOfStock} AGOTADOS</span>}
+                                                        {cat.critical > 0 && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-[10px] text-[9px] font-black flex items-center gap-1"><Icon name="warning" size={12} fill /> {cat.critical} CRÍTICOS</span>}
                                                     </div>
                                                 </div>
                                                 <h4 className="text-base md:text-xl font-bold text-[#202124] group-hover:text-blue-600 transition-colors line-clamp-1">{cat.name}</h4>
-                                                <div className="mt-3 md:mt-4 flex items-center justify-between border-t border-[#F1F3F4] pt-3 md:pt-4"><p className="text-[11px] md:text-xs text-[#5F6368] font-medium">{cat.total} artículos registrados</p><p className="text-[10px] font-bold text-[#1a73e8] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Consultar inventario <Icon name="arrow_forward" size={14} /></p></div>
+                                                <div className="mt-3 md:mt-4 flex items-center justify-between border-t border-[#F1F3F4] pt-3 md:pt-4"><p className="text-[11px] md:text-xs text-[#5F6368] font-medium">{cat.total} ítems</p><p className="text-[10px] font-bold text-[#1a73e8] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Ver detalle <Icon name="arrow_forward" size={14} /></p></div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             </div>
                         )}
-
-                        {/* 2. BUSCADOR / INVENTARIO */}
+                        
+                        {/* BUSCADOR */}
                         {view === 'inventory' && (
                             <div className="space-y-6 fade-in-up pb-6">
                                 <div className="bg-white p-4 md:p-6 rounded-[32px] border border-[#E0E0E0] shadow-sm flex items-center gap-4 focus-within:ring-4 focus-within:ring-blue-100 transition-all">
                                     <Icon name="search" size={28} className="text-[#5F6368]" />
-                                    <input 
-                                        type="text" 
-                                        placeholder="Ingrese el término de búsqueda correspondiente al material o categoría..." 
-                                        value={searchTerm} 
-                                        onChange={e => {setSearchTerm(e.target.value); if(e.target.value) resetNav();}} 
-                                        className="w-full bg-transparent text-xl font-medium outline-none placeholder-[#BDC1C6]" 
-                                    />
+                                    <input type="text" placeholder="¿Qué estás buscando? (café, cajas, etiquetas...)" value={searchTerm} onChange={e => {setSearchTerm(e.target.value); if(e.target.value) resetNav();}} className="w-full bg-transparent text-xl font-medium outline-none placeholder-[#BDC1C6]" />
                                 </div>
 
                                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
-                                    <button onClick={() => { resetNav(); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap flex items-center gap-1.5 transition-all ${!navPath.category ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name="search" size={16} fill={!navPath.category} /> Búsqueda de Inventario</button>
+                                    <button onClick={() => { resetNav(); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap flex items-center gap-1.5 transition-all ${!navPath.category ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name="search" size={16} fill={!navPath.category} /> Buscador</button>
                                     {navPath.category && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, subcategory:null, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap flex items-center gap-1.5 transition-all ${!navPath.subcategory ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category)} size={16} fill={!navPath.subcategory} /> {navPath.category}</button></>}
-                                    {navPath.subcategory && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, itemId:null}); triggerHaptic(); }} className="px-5 py-2.5 bg-[#1a73e8] text-white rounded-full text-xs font-bold uppercase whitespace-nowrap shadow-md flex items-center gap-1.5 shadow-blue-100"><Icon name="folder_open" size={16} fill /> {navPath.subcategory}</button></>}
+                                    {navPath.subcategory && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, itemId:null}); triggerHaptic(); }} className="px-5 py-2.5 bg-[#1a73e8] text-white rounded-full text-xs font-bold uppercase shadow-md flex items-center gap-1.5 shadow-blue-100"><Icon name="folder_open" size={16} fill /> {navPath.subcategory}</button></>}
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4">
-                                    {/* Nivel: Categorías */}
+                                    {/* Nivel: Categorías (CON DISEÑO V2.2 Y MÉTRICAS) */}
                                     {navigationData.level === 'categories' && navigationData.items.map((item, idx) => (
-                                        <div key={idx} onClick={() => { setNavPath({ ...navPath, category: item.name }); triggerHaptic(); }} className="bg-white p-6 rounded-[32px] border border-[#E0E0E0] flex items-center justify-between cursor-pointer hover:shadow-md transition-all nav-card group fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
-                                            <div className="flex items-center gap-4"><div className="w-14 h-14 bg-[#E8F0FE] text-[#1a73e8] rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105"><Icon name={getItemIcon(item.name)} size={28} fill /></div><div className="text-left"><h4 className="text-lg font-bold text-[#202124]">{item.name}</h4><p className="text-xs font-medium text-[#5F6368]">{item.count} clasificaciones de producto • {item.out > 0 ? <span className="text-red-600 font-bold">{item.out} sin existencias</span> : 'Disponibilidad total'}</p></div></div>
+                                        <div key={idx} onClick={() => { setNavPath({ ...navPath, category: item.name }); triggerHaptic(); }} className={`bg-white p-6 rounded-[32px] border transition-all flex items-center justify-between cursor-pointer hover:shadow-lg nav-card group fade-in-up ${item.out > 0 ? 'border-red-300' : item.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${idx * 40}ms` }}>
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${item.out > 0 ? 'bg-red-50 text-red-600' : item.critical > 0 ? 'bg-amber-50 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}>
+                                                    <Icon name={getItemIcon(item.name)} size={28} fill />
+                                                </div>
+                                                <div className="text-left">
+                                                    <h4 className="text-lg font-bold text-[#202124]">{item.name}</h4>
+                                                    <div className="flex items-center flex-wrap gap-x-2 mt-1">
+                                                        <span className="text-xs font-medium text-[#5F6368]">{item.count} ítems</span>
+                                                        {item.out > 0 && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-lg text-[10px] font-black">Agotados: {item.out}</span>}
+                                                        {item.critical > 0 && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg text-[10px] font-black">Críticos: {item.critical}</span>}
+                                                    </div>
+                                                </div>
+                                            </div>
                                             <Icon name="chevron_right" className="text-[#BDC1C6] group-hover:text-blue-600 transition-colors" />
                                         </div>
                                     ))}
 
-                                    {/* Nivel: Subcategorías (Formato Ultra Premium Compacto) */}
+                                    {/* Nivel: Subcategorías (Formato Compacto) */}
                                     {navigationData.level === 'subcategories' && navigationData.items.map((sub, idx) => (
-                                        <div key={idx} onClick={() => { setNavPath({ ...navPath, subcategory: sub.name }); triggerHaptic(); }} className={`bg-white p-4 md:p-5 rounded-[28px] border border-[#E0E0E0] flex items-center justify-between cursor-pointer hover:shadow-md hover:border-blue-200 transition-all nav-card group fade-in-up`} style={{ animationDelay: `${idx * 40}ms` }}>
+                                        <div key={idx} onClick={() => { setNavPath({ ...navPath, subcategory: sub.name }); triggerHaptic(); }} className={`bg-white p-4 md:p-5 rounded-[28px] border ${sub.out > 0 ? 'border-red-300' : sub.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'} flex items-center justify-between cursor-pointer hover:shadow-md transition-all nav-card group fade-in-up`} style={{ animationDelay: `${idx * 40}ms` }}>
                                             <div className="flex items-center gap-4">
-                                                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${sub.out > 0 ? 'bg-red-50 text-red-600' : sub.critical > 0 ? 'bg-amber-50 text-amber-600' : 'bg-[#F8F9FA] text-[#1a73e8]'}`}>
+                                                <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${sub.out > 0 ? 'bg-red-50 text-red-600' : sub.critical > 0 ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-[#5F6368]'}`}>
                                                     <Icon name={getItemIcon(navPath.category)} size={24} fill />
                                                 </div>
                                                 <div className="text-left">
                                                     <h4 className="text-base font-bold text-[#202124] leading-tight">{sub.name}</h4>
                                                     <div className="flex items-center flex-wrap gap-x-2 mt-1">
                                                         <span className="text-[11px] font-medium text-[#5F6368]">{sub.count} ítems</span>
-                                                        {sub.out > 0 && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-md text-[9px] font-bold shadow-sm">Agotados: {sub.out}</span>}
-                                                        {sub.critical > 0 && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md text-[9px] font-bold shadow-sm">Críticos: {sub.critical}</span>}
+                                                        {sub.out > 0 && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-md text-[9px] font-bold">Agotados: {sub.out}</span>}
+                                                        {sub.critical > 0 && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md text-[9px] font-bold">Críticos: {sub.critical}</span>}
                                                     </div>
                                                 </div>
                                             </div>
-                                            <Icon name="chevron_right" className="text-[#BDC1C6] group-hover:text-blue-600 transition-colors" size={24} />
+                                            <Icon name="chevron_right" className="text-[#BDC1C6] group-hover:text-blue-600 transition-colors" />
                                         </div>
                                     ))}
 
-                                    {/* Nivel: Ítems Finales (y Búsqueda) */}
+                                    {/* Nivel: Ítems Finales */}
                                     {(navigationData.level === 'items' || navigationData.level === 'search') && navigationData.items.map((m, idx) => {
                                         const isOut = (parseFloat(m.stock) || 0) <= 0; const isCrit = m.stock <= m.minimo && m.stock > 0;
-                                        const days = stats.getDaysLeft(m.id, m.stock);
                                         return (
                                             <div key={m.id} onClick={() => { handleItemClick(m); }} className={`gpu-accelerated bg-white p-5 md:p-6 rounded-[32px] md:rounded-[40px] border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all cursor-pointer hover:shadow-xl group nav-card fade-in-up ${isOut ? 'border-red-300 bg-red-50/10' : isCrit ? 'border-amber-300' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${idx * 40}ms` }}>
-                                                <div className="flex items-center gap-5">
-                                                    <div className={`shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${isOut ? 'bg-red-600 text-white shadow-lg shadow-red-200' : isCrit ? 'bg-amber-100 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}>
-                                                        <Icon name={getItemIcon(m.categoria, m.subcategoria, m.nombre)} size={32} fill />
-                                                    </div>
-                                                    <div>
-                                                        <p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest mb-0.5 line-clamp-1">{m.subcategoria || 'General'}</p>
-                                                        <h4 className={`text-lg md:text-xl font-bold tracking-tight line-clamp-1 ${isOut ? 'text-red-700' : 'text-[#202124]'}`}>{m.nombre}</h4>
-                                                        <p className="text-[11px] text-[#1a73e8] font-bold mt-0.5 flex items-center gap-1">Ver ficha detallada <Icon name="arrow_forward" size={14} /></p>
-                                                    </div>
-                                                </div>
-                                                <div className="flex items-center gap-6 px-2 border-t md:border-t-0 pt-4 md:pt-0 border-[#F1F3F4] justify-between md:justify-end w-full md:w-auto">
-                                                    <div className="text-left md:text-center"><p className="text-[9px] font-black text-[#5F6368] uppercase tracking-widest mb-1">Existencias</p><div className="flex items-baseline gap-1"><span className={`text-2xl md:text-3xl font-black tracking-tighter ${isOut ? 'text-red-600' : isCrit ? 'text-amber-600' : 'text-[#202124]'}`}>{parseFloat(m.stock).toLocaleString()}</span><span className="text-[10px] font-bold text-[#5F6368] tracking-normal lowercase">{m.unidad}</span></div></div>
-                                                    <div className="text-right md:text-center"><p className="text-[9px] font-black text-[#5F6368] uppercase tracking-widest mb-1">Autonomía Estimada</p><div className="flex items-baseline gap-1"><span className={`text-xl md:text-2xl font-black tracking-tight ${isOut ? 'text-red-300' : 'text-[#1a73e8]'}`}>{isOut ? '0' : days}</span><span className="text-[10px] font-bold text-[#5F6368] tracking-normal lowercase">días</span></div></div>
-                                                    <div className="hidden lg:flex gap-2 ml-4">
-                                                        <button onClick={(e) => { e.stopPropagation(); setSelectedMaterial(m); setModalType('IN'); triggerHaptic(); }} className="action-button p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-colors"><Icon name="add_circle" size={24} fill /></button>
-                                                        <button disabled={isOut} onClick={(e) => { e.stopPropagation(); setSelectedMaterial(m); setModalType('OUT'); triggerHaptic(); }} className={`action-button p-4 rounded-2xl transition-colors ${isOut ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name="remove_circle" size={24} fill /></button>
-                                                    </div>
-                                                </div>
+                                                <div className="flex items-center gap-5"><div className={`shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${isOut ? 'bg-red-600 text-white shadow-lg shadow-red-200' : isCrit ? 'bg-amber-100 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}><Icon name={getItemIcon(m.categoria, m.subcategoria, m.nombre)} size={32} fill /></div><div><p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest mb-0.5">{m.subcategoria || 'General'}</p><h4 className={`text-lg md:text-xl font-bold tracking-tight line-clamp-1 ${isOut ? 'text-red-700' : 'text-[#202124]'}`}>{m.nombre}</h4><p className="text-[11px] text-[#1a73e8] font-bold mt-0.5 flex items-center gap-1">Ficha detallada <Icon name="arrow_forward" size={14} /></p></div></div>
+                                                <div className="flex items-center gap-6 px-2 border-t md:border-t-0 pt-4 md:pt-0 border-[#F1F3F4] justify-between md:justify-end w-full md:w-auto"><div className="text-left md:text-center"><p className="text-[9px] font-black text-[#5F6368] uppercase tracking-widest mb-1">Existencias</p><p className={`text-2xl md:text-3xl font-black tracking-tighter ${isOut ? 'text-red-600' : isCrit ? 'text-amber-600' : 'text-[#202124]'}`}>{parseFloat(m.stock).toLocaleString()} <span className="text-[10px] font-bold text-[#5F6368] lowercase">{m.unidad}</span></p></div><div className="text-right md:text-center"><p className="text-[9px] font-black text-[#5F6368] uppercase tracking-widest mb-1">Alcance</p><p className={`text-xl md:text-2xl font-black ${isOut ? 'text-red-300' : 'text-[#1a73e8]'}`}>{isOut ? '0' : stats.getDaysLeft(m.id, m.stock)} <span className="text-[10px] font-bold text-[#5F6368] lowercase">días</span></p></div></div>
                                             </div>
                                         );
                                     })}
-                                    {navigationData.items && navigationData.items.length === 0 && (
-                                        <div className="text-center py-20 bg-white rounded-[40px] border border-dashed border-[#E0E0E0] fade-in-up">
-                                            <Icon name="search_off" size={48} className="text-[#BDC1C6] mb-4" />
-                                            <p className="text-[#5F6368] font-medium">No se han encontrado registros que coincidan con los criterios de búsqueda especificados.</p>
-                                        </div>
-                                    )}
                                 </div>
                             </div>
                         )}
 
-                        {/* 3. FICHA TÉCNICA / DETALLE DE PRODUCTO */}
+                        {/* DETALLE TÉCNICO */}
                         {navigationData.level === 'detail' && navigationData.item && (
                             <div className="space-y-6 fade-in-up">
                                 <button onClick={() => setNavPath({ ...navPath, itemId: null })} className="flex items-center gap-2 text-[#5F6368] font-bold hover:text-blue-600 transition-all mb-2"><Icon name="arrow_back" size={20} /> Regresar al directorio</button>
-                                
                                 <div className="bg-white p-8 md:p-12 rounded-[40px] md:rounded-[48px] border border-[#E0E0E0] shadow-sm">
-                                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 md:gap-8">
-                                        <div className="flex items-center gap-5 md:gap-6">
-                                            <div className={`w-20 h-20 md:w-24 md:h-24 rounded-[28px] md:rounded-[32px] flex items-center justify-center shrink-0 ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-red-600 text-white shadow-xl shadow-red-200' : 'bg-[#1a73e8] text-white shadow-xl shadow-blue-200'}`}><Icon name={getItemIcon(navigationData.item.categoria, navigationData.item.subcategoria, navigationData.item.nombre)} size={44} fill /></div>
-                                            <div>
-                                                <p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest mb-1 md:mb-2">{navigationData.item.categoria} / {navigationData.item.subcategoria || 'General'}</p>
-                                                <h3 className="text-3xl md:text-4xl font-black tracking-tighter uppercase text-[#202124] leading-tight mb-2">{navigationData.item.nombre}</h3>
-                                                <div className="flex gap-2"><span className="bg-[#F1F3F4] text-[#5F6368] px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider">Código de Referencia: {navigationData.item.id}</span><span className="bg-[#F1F3F4] text-[#5F6368] px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider">Inventario Mínimo: {navigationData.item.minimo} {navigationData.item.unidad}</span></div>
-                                            </div>
-                                        </div>
-                                        <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0">
-                                            <button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('IN'); triggerHaptic(); }} className="action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-5 bg-blue-50 text-blue-600 rounded-[28px] hover:bg-blue-600 hover:text-white transition-all min-w-[100px]"><Icon name="add_circle" size={28} fill /><span className="text-[10px] font-black uppercase text-center leading-tight">Registrar<br/>Entrada</span></button>
-                                            <button disabled={parseFloat(navigationData.item.stock) <= 0} onClick={() => { setSelectedMaterial(navigationData.item); setModalType('OUT'); triggerHaptic(); }} className={`action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-5 rounded-[28px] transition-all min-w-[100px] ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-[#F1F3F4] text-[#BDC1C6]' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name="remove_circle" size={28} fill /><span className="text-[10px] font-black uppercase text-center leading-tight">Registrar<br/>Salida</span></button>
-                                            <button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('ADJUST'); triggerHaptic(); }} className="action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-5 bg-[#F1F3F4] text-[#5F6368] rounded-[28px] hover:bg-[#5F6368] hover:text-white transition-all min-w-[100px]"><Icon name="tune" size={28} fill /><span className="text-[10px] font-black uppercase text-center leading-tight">Ajustar<br/>Inventario</span></button>
-                                        </div>
+                                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-8">
+                                        <div className="flex items-center gap-6"><div className={`w-20 h-20 md:w-24 md:h-24 rounded-[28px] md:rounded-[32px] flex items-center justify-center shrink-0 ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-red-600 text-white shadow-xl shadow-red-200' : 'bg-[#1a73e8] text-white shadow-xl shadow-blue-200'}`}><Icon name={getItemIcon(navigationData.item.categoria, navigationData.item.subcategoria, navigationData.item.nombre)} size={44} fill /></div><div><p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest mb-1 md:mb-2">{navigationData.item.categoria} / {navigationData.item.subcategoria || 'General'}</p><h3 className="text-3xl md:text-4xl font-black tracking-tighter uppercase text-[#202124] leading-tight mb-3">{navigationData.item.nombre}</h3><div className="flex gap-2"><span className="bg-[#F1F3F4] text-[#5F6368] px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider">Cód: {navigationData.item.id}</span><span className="bg-[#F1F3F4] text-[#5F6368] px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider">Mínimo: {navigationData.item.minimo} {navigationData.item.unidad}</span></div></div></div>
+                                        <div className="flex gap-4 w-full md:w-auto mt-4 md:mt-0"><button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('IN'); triggerHaptic(); }} className="action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-5 bg-blue-50 text-blue-600 rounded-[28px] hover:bg-blue-600 hover:text-white transition-all min-w-[100px]"><Icon name="add_circle" size={28} fill /><span className="text-[10px] font-black uppercase text-center">Entrada</span></button><button disabled={parseFloat(navigationData.item.stock) <= 0} onClick={() => { setSelectedMaterial(navigationData.item); setModalType('OUT'); triggerHaptic(); }} className={`action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-5 rounded-[28px] transition-all min-w-[100px] ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-[#F1F3F4] text-[#BDC1C6]' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name="remove_circle" size={28} fill /><span className="text-[10px] font-black uppercase text-center">Salida</span></button><button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('ADJUST'); triggerHaptic(); }} className="action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-5 bg-[#F1F3F4] text-[#5F6368] rounded-[28px] hover:bg-[#5F6368] hover:text-white transition-all min-w-[100px]"><Icon name="tune" size={28} fill /><span className="text-[10px] font-black uppercase text-center">Ajustar</span></button></div>
                                     </div>
-                                    
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mt-10 border-t border-[#F1F3F4] pt-10">
-                                        <div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2 ml-1">Existencias Actuales</p><div className={`flex items-baseline gap-1.5 ${parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : 'text-blue-600'}`}><span className="text-4xl md:text-5xl font-black tracking-tight">{parseFloat(navigationData.item.stock).toLocaleString()}</span><span className="text-sm md:text-base font-bold text-[#5F6368] lowercase">{navigationData.item.unidad}</span></div></div>
-                                        <div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2 ml-1">Autonomía Estimada</p><div className="flex items-baseline gap-1.5 text-[#202124]"><span className="text-4xl md:text-5xl font-black tracking-tight">{stats.getDaysLeft(navigationData.item.id, navigationData.item.stock)}</span><span className="text-sm md:text-base font-bold text-[#5F6368] lowercase">días</span></div></div>
-                                        <div className="col-span-2 md:col-span-1 bg-[#F8F9FA] p-6 md:p-8 rounded-[32px] flex items-center gap-5">
-                                            <Icon name={parseFloat(navigationData.item.stock) <= 0 ? 'error' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'warning' : 'check_circle'} size={48} fill className={parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'text-amber-600' : 'text-green-600'} />
-                                            <div><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-1">Estado Operativo</p><p className="text-xl font-bold uppercase tracking-tight text-[#202124]">{parseFloat(navigationData.item.stock) <= 0 ? 'Sin Existencias' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'Nivel Crítico' : 'Nivel Óptimo'}</p></div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white rounded-[40px] border border-[#E0E0E0] overflow-hidden">
-                                    <div className="p-6 md:p-8 border-b border-[#F1F3F4] flex items-center gap-3"><Icon name="history" className="text-[#1a73e8]" size={24} fill /><h4 className="text-xl font-bold tracking-tight text-[#202124]">Registro Histórico Reciente</h4></div>
-                                    <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left"><thead className="bg-[#F8F9FA] text-[10px] font-bold uppercase text-[#5F6368] tracking-widest"><tr><th className="px-6 md:px-8 py-5">Fecha / Operador</th><th className="px-6 md:px-8 py-5">Tipo de Operación</th><th className="px-6 md:px-8 py-5 text-right">Variación Neta</th><th className="px-6 md:px-8 py-5 text-right">Balance Final</th></tr></thead>
-                                        <tbody className="divide-y divide-[#F1F3F4]">{navigationData.movements.length > 0 ? navigationData.movements.slice().reverse().slice(0, 15).map((mov, i) => (<tr key={i} className="hover:bg-[#F8F9FA] transition-colors"><td className="px-6 md:px-8 py-5"><p className="text-sm font-bold text-[#202124] whitespace-nowrap">{new Date(mov.timestamp).toLocaleDateString()} <span className="text-xs font-medium text-[#5F6368]">{new Date(mov.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></p><p className="text-[10px] uppercase font-bold text-[#5F6368] mt-0.5">{mov.usuario}</p></td><td className="px-6 md:px-8 py-5"><span className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black inline-flex items-center gap-1 ${mov.tipo === 'IN' ? 'bg-green-100 text-green-700' : mov.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}><Icon name={mov.tipo === 'IN' ? 'add_circle' : mov.tipo === 'OUT' ? 'remove_circle' : 'tune'} size={14} fill /> {mov.tipo}</span></td><td className={`px-6 md:px-8 py-5 text-right text-sm font-bold ${parseFloat(mov.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{parseFloat(mov.diferencia) > 0 ? '+' : ''}{mov.diferencia}</td><td className="px-6 md:px-8 py-5 text-right text-sm font-black text-[#202124]">{mov.stock_nuevo}</td></tr>)) : (<tr><td colSpan="4" className="px-6 md:px-8 py-12 text-center text-[#5F6368] text-sm font-medium">No se registran operaciones recientes para este artículo.</td></tr>)}</tbody>
-                                    </table></div>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mt-10 border-t border-[#F1F3F4] pt-10"><div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2 ml-1">Existencias</p><div className={`flex items-baseline gap-1.5 ${parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : 'text-blue-600'}`}><span className="text-4xl md:text-5xl font-black tracking-tight">{parseFloat(navigationData.item.stock).toLocaleString()}</span><span className="text-sm md:text-base font-bold text-[#5F6368] lowercase">{navigationData.item.unidad}</span></div></div><div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2 ml-1">Alcance Estimado</p><div className="flex items-baseline gap-1.5 text-[#202124]"><span className="text-4xl md:text-5xl font-black tracking-tight">{stats.getDaysLeft(navigationData.item.id, navigationData.item.stock)}</span><span className="text-sm md:text-base font-bold text-[#5F6368] lowercase">días</span></div></div><div className="col-span-2 md:col-span-1 bg-[#F8F9FA] p-6 md:p-8 rounded-[32px] flex items-center gap-5"><Icon name={parseFloat(navigationData.item.stock) <= 0 ? 'error' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'warning' : 'check_circle'} size={48} fill className={parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'text-amber-600' : 'text-green-600'} /><div><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-1">Estado</p><p className="text-xl font-bold uppercase tracking-tight text-[#202124]">{parseFloat(navigationData.item.stock) <= 0 ? 'Sin Stock' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'Crítico' : 'Óptimo'}</p></div></div></div>
                                 </div>
                             </div>
                         )}
 
-                        {/* 4. HISTORIAL GLOBAL (CON ORDENAMIENTO EN CABECERA) */}
+                        {/* HISTORIAL */}
                         {view === 'history' && (
                             <div className="bg-white rounded-[40px] border border-[#E0E0E0] overflow-hidden shadow-sm fade-in-up mt-4">
-                                <div className="p-6 md:p-8 border-b border-[#F1F3F4] flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3"><Icon name="history" className="text-[#1a73e8]" size={28} fill /><h3 className="text-2xl font-bold tracking-tight text-[#202124]">Registro Histórico Global</h3></div>
-                                    <div className="flex items-center gap-2">
-                                        <button onClick={() => setShowFilters(!showFilters)} className={`action-button px-4 py-2.5 rounded-2xl flex items-center gap-2 text-sm font-bold transition-colors ${showFilters ? 'bg-blue-50 text-blue-600' : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-[#E0E0E0]'}`}>
-                                            <Icon name="filter_list" size={20} /> Filtros de Búsqueda
-                                        </button>
-                                        <button onClick={() => { fetchData(); triggerHaptic(); }} className="action-button p-2.5 bg-[#F8F9FA] text-[#5F6368] rounded-2xl hover:bg-[#E0E0E0]">
-                                            <Icon name="sync" size={20} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                {/* PANEL DE FILTROS DESPLEGABLE */}
+                                <div className="p-6 md:p-8 border-b border-[#F1F3F4] flex flex-col md:flex-row md:items-center justify-between gap-4"><div className="flex items-center gap-3"><Icon name="history" className="text-[#1a73e8]" size={28} fill /><h3 className="text-2xl font-bold tracking-tight text-[#202124]">Bitácora Global</h3></div><div className="flex items-center gap-2"><button onClick={() => setShowFilters(!showFilters)} className={`action-button px-4 py-2.5 rounded-2xl flex items-center gap-2 text-sm font-bold transition-colors ${showFilters ? 'bg-blue-50 text-blue-600' : 'bg-[#F8F9FA] text-[#5F6368]'}`}><Icon name="filter_list" size={20} /> Filtros</button><button onClick={() => fetchData()} className="action-button p-2.5 bg-[#F8F9FA] text-[#5F6368] rounded-2xl"><Icon name="sync" size={20} spin={isSyncing} /></button></div></div>
                                 {showFilters && (
-                                    <div className="p-6 md:p-8 bg-[#F8F9FA] border-b border-[#F1F3F4] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 fade-in-up">
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Operador</label>
-                                            <select value={historyFilters.user} onChange={e => setHistoryFilters({...historyFilters, user: e.target.value})} className="w-full bg-white border border-[#E0E0E0] rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-[#1a73e8] transition-colors appearance-none cursor-pointer">
-                                                <option value="">Todos los operadores</option>
-                                                {historyData.uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Categoría</label>
-                                            <select value={historyFilters.category} onChange={e => setHistoryFilters({...historyFilters, category: e.target.value, subcategory: ''})} className="w-full bg-white border border-[#E0E0E0] rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-[#1a73e8] transition-colors appearance-none cursor-pointer">
-                                                <option value="">Todas las categorías</option>
-                                                {historyData.uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Subcategoría</label>
-                                            <select value={historyFilters.subcategory} onChange={e => setHistoryFilters({...historyFilters, subcategory: e.target.value})} className="w-full bg-white border border-[#E0E0E0] rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-[#1a73e8] transition-colors appearance-none cursor-pointer">
-                                                <option value="">Todas las subcategorías</option>
-                                                {historyData.uniqueSubcategories.map(s => <option key={s} value={s}>{s}</option>)}
-                                            </select>
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Fecha de Inicio</label>
-                                            <input type="date" value={historyFilters.dateStart} onChange={e => setHistoryFilters({...historyFilters, dateStart: e.target.value})} className="w-full bg-white border border-[#E0E0E0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-[#1a73e8] transition-colors cursor-pointer" />
-                                        </div>
-                                        <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Fecha de Término</label>
-                                            <input type="date" value={historyFilters.dateEnd} onChange={e => setHistoryFilters({...historyFilters, dateEnd: e.target.value})} className="w-full bg-white border border-[#E0E0E0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-[#1a73e8] transition-colors cursor-pointer" />
-                                        </div>
-                                        <div className="sm:col-span-2 lg:col-span-1 flex justify-end items-end">
-                                            <button onClick={() => { setHistoryFilters({ user: '', dateStart: '', dateEnd: '', category: '', subcategory: '', sort: 'date_desc' }); triggerHaptic(); }} className="text-red-600 hover:bg-red-50 px-5 py-3 rounded-xl text-xs font-bold transition-all uppercase tracking-wider w-full lg:w-auto">
-                                                Restablecer Parámetros
-                                            </button>
-                                        </div>
-                                    </div>
+                                    <div className="p-6 md:p-8 bg-[#F8F9FA] border-b border-[#F1F3F4] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 fade-in-up"><div className="space-y-1.5"><label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Operador</label><select value={historyFilters.user} onChange={e => setHistoryFilters({...historyFilters, user: e.target.value})} className="w-full bg-white border border-[#E0E0E0] rounded-xl px-4 py-3 text-sm font-medium outline-none appearance-none cursor-pointer"><option value="">Todos</option>{historyData.uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}</select></div><div className="space-y-1.5"><label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Categoría</label><select value={historyFilters.category} onChange={e => setHistoryFilters({...historyFilters, category: e.target.value, subcategory: ''})} className="w-full bg-white border border-[#E0E0E0] rounded-xl px-4 py-3 text-sm font-medium outline-none appearance-none cursor-pointer"><option value="">Todas</option>{historyData.uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div className="sm:col-span-2 lg:col-span-1 flex justify-end items-end"><button onClick={() => { setHistoryFilters({ user: '', dateStart: '', dateEnd: '', category: '', subcategory: '', sort: 'date_desc' }); triggerHaptic(); }} className="text-red-600 hover:bg-red-50 px-5 py-3 rounded-xl text-xs font-bold transition-all uppercase tracking-wider w-full lg:w-auto">Limpiar Filtros</button></div></div>
                                 )}
-
-                                <div className="overflow-x-auto no-scrollbar">
-                                    <table className="w-full text-left">
-                                        <thead className="bg-[#F8F9FA] text-[#5F6368] text-xs font-bold uppercase tracking-widest border-b border-[#F1F3F4]">
-                                            <tr>
-                                                <th className="px-6 md:px-8 py-4 cursor-pointer hover:bg-[#E8F0FE]/50 transition-colors group select-none" onClick={() => handleSort('date')}>
-                                                    <div className={`flex items-center gap-1 ${historyFilters.sort.startsWith('date') ? 'text-[#1a73e8]' : ''}`}>
-                                                        Fecha / Operador
-                                                        {historyFilters.sort === 'date_desc' ? <Icon name="arrow_downward" size={16} /> : historyFilters.sort === 'date_asc' ? <Icon name="arrow_upward" size={16} /> : <Icon name="swap_vert" size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" />}
-                                                    </div>
-                                                </th>
-                                                <th className="px-6 md:px-8 py-4 cursor-pointer hover:bg-[#E8F0FE]/50 transition-colors group select-none" onClick={() => handleSort('tipo')}>
-                                                    <div className={`flex items-center gap-1 ${historyFilters.sort.startsWith('tipo') ? 'text-[#1a73e8]' : ''}`}>
-                                                        Tipo de Operación
-                                                        {historyFilters.sort === 'tipo_desc' ? <Icon name="arrow_downward" size={16} /> : historyFilters.sort === 'tipo_asc' ? <Icon name="arrow_upward" size={16} /> : <Icon name="swap_vert" size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" />}
-                                                    </div>
-                                                </th>
-                                                <th className="px-6 md:px-8 py-4 cursor-pointer hover:bg-[#E8F0FE]/50 transition-colors group select-none" onClick={() => handleSort('mat')}>
-                                                    <div className={`flex items-center gap-1 ${historyFilters.sort.startsWith('mat') ? 'text-[#1a73e8]' : ''}`}>
-                                                        Material Operado
-                                                        {historyFilters.sort === 'mat_desc' ? <Icon name="arrow_downward" size={16} /> : historyFilters.sort === 'mat_asc' ? <Icon name="arrow_upward" size={16} /> : <Icon name="swap_vert" size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" />}
-                                                    </div>
-                                                </th>
-                                                <th className="px-6 md:px-8 py-4 text-right">Variación Neta / Balance Final</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-[#F1F3F4]">
-                                            {historyData.movs.slice(0, 200).map((m, i) => (
-                                                <tr key={i} className="hover:bg-[#F8F9FA] transition-colors">
-                                                    <td className="px-6 md:px-8 py-5">
-                                                        <p className="text-sm font-bold text-[#202124] whitespace-nowrap">{new Date(m.timestamp).toLocaleDateString()} <span className="text-xs font-medium text-[#5F6368]">{new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></p>
-                                                        <p className="text-[10px] uppercase font-bold text-[#5F6368] mt-1">{m.usuario}</p>
-                                                    </td>
-                                                    <td className="px-6 md:px-8 py-5">
-                                                        <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black inline-flex items-center gap-1 ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}>
-                                                            <Icon name={m.tipo === 'IN' ? 'add_circle' : m.tipo === 'OUT' ? 'remove_circle' : 'tune'} size={14} fill />
-                                                            {m.tipo}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-6 md:px-8 py-5">
-                                                        <p className="text-sm font-bold text-[#202124]">{m.item_nombre}</p>
-                                                        <p className="text-[10px] font-bold text-[#5F6368] mt-1 uppercase tracking-widest">{m.categoria_real} / {m.subcategoria}</p>
-                                                    </td>
-                                                    <td className="px-6 md:px-8 py-5 text-right">
-                                                        <p className={`text-sm font-bold mb-1 ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                                            {parseFloat(m.diferencia) > 0 ? '+' : ''}{m.diferencia}
-                                                        </p>
-                                                        <p className="font-black text-[#202124] text-xs bg-[#E0E0E0]/30 inline-block px-2 py-1 rounded-lg">
-                                                            = {m.stock_nuevo}
-                                                        </p>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {historyData.movs.length === 0 && (
-                                                <tr><td colSpan="4" className="px-6 py-12 text-center text-[#5F6368] text-sm font-medium">No se han encontrado operaciones que cumplan con los criterios de filtrado establecidos.</td></tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* VISTA REPORTES */}
-                        {view === 'reports' && (
-                            <div className="space-y-6 fade-in-up pb-10">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-4 no-print">
-                                    <div><h2 className="text-3xl font-bold tracking-tight text-[#202124]">Informes y Auditoría</h2><p className="text-[#5F6368] font-medium mt-1">Módulo para la exportación de datos de inventario y los indicadores clave de rendimiento (KPIs).</p></div>
-                                    <div className="flex flex-col sm:flex-row gap-4">
-                                        <button onClick={() => window.open('https://docs.google.com/spreadsheets/d/1oZiefz32aCVb0iBGnfQ5drzZKvk94HVCbWcgZleIKlg/edit', '_blank')} className="action-button flex justify-center items-center gap-2 px-8 py-4 bg-white border border-[#E0E0E0] text-[#1a73e8] rounded-full font-bold shadow-sm hover:bg-[#F8F9FA] text-base"><Icon name="open_in_new" size={20} /> Visualizar Base de Datos</button>
-                                        <button onClick={() => { triggerHaptic(); window.print(); }} className="action-button flex justify-center items-center gap-2 px-8 py-4 bg-[#1a73e8] text-white rounded-full font-bold shadow-xl shadow-blue-200 hover:bg-[#1557b0] text-base"><Icon name="print" size={20} /> Generar Documento PDF</button>
-                                    </div>
-                                </div>
-
-                                <div className="bg-white p-8 md:p-14 rounded-[40px] md:rounded-[48px] border border-[#E0E0E0] shadow-sm report-container">
-                                    <div className="border-b-4 border-[#1a73e8] pb-6 mb-10 flex flex-col md:flex-row md:justify-between md:items-end gap-4">
-                                        <div className="flex items-center gap-4">
-                                            <img src="./logo.png" alt="K" className="w-14 h-14 object-contain shrink-0" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-                                            <div style={{display: 'none'}} className="w-14 h-14 bg-[#1a73e8] rounded-2xl flex-col items-center justify-center text-white shadow-md shrink-0">
-                                                <span className="text-3xl font-black font-sans leading-none">K</span>
-                                            </div>
-                                            <div>
-                                                <h1 className="text-4xl md:text-5xl font-black text-[#202124] tracking-tighter uppercase mb-1">Stock Control</h1>
-                                                <h2 className="text-sm md:text-base font-bold text-[#5F6368] uppercase tracking-widest">Informe Consolidado de Inventario - Kawas Tostaduría</h2>
-                                            </div>
-                                        </div>
-                                        <div className="text-left md:text-right"><p className="text-sm font-bold text-[#202124]">FECHA: {new Date().toLocaleDateString()}</p><p className="text-xs font-medium text-[#5F6368] uppercase mt-1">Documento generado por: {user.nombre}</p></div>
-                                    </div>
-
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-10 md:mb-12">
-                                        <div className="p-6 bg-[#F8F9FA] rounded-[24px] border border-[#F1F3F4]"><p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest">Total de Artículos</p><p className="text-3xl font-black mt-2 text-[#202124]">{stats.totalItems}</p></div>
-                                        <div className="p-6 bg-[#E8F0FE] rounded-[24px] border border-blue-100"><p className="text-xs font-bold text-blue-700 uppercase tracking-widest">Índice de Disponibilidad General</p><p className="text-3xl font-black mt-2 text-blue-700">{Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%</p></div>
-                                        <div className="p-6 bg-amber-50 rounded-[24px] border border-amber-100"><p className="text-xs font-bold text-amber-700 uppercase tracking-widest">Nivel de Riesgo (Críticos)</p><p className="text-3xl font-black mt-2 text-amber-700">{stats.criticalItems}</p></div>
-                                        <div className="p-6 bg-red-50 rounded-[24px] border border-red-100"><p className="text-xs font-bold text-red-700 uppercase tracking-widest">Ruptura de Stock (Agotados)</p><p className="text-3xl font-black mt-2 text-red-700">{stats.outOfStock}</p></div>
-                                    </div>
-
-                                    <div className="mb-12 avoid-break">
-                                        <div className="flex items-center gap-3 mb-6"><Icon name="pie_chart" className="text-[#202124]" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Indicadores Clave por Categoría</h3></div>
-                                        <div className="overflow-x-auto">
-                                            <table className="w-full text-left print-table border-collapse border border-[#E0E0E0]">
-                                                <thead className="bg-[#F8F9FA]">
-                                                    <tr>
-                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0]">Categoría de Producto</th>
-                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Artículos Registrados</th>
-                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Nivel de Riesgo (Críticos)</th>
-                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Ruptura de Stock (Agotados)</th>
-                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-right">Índice de Salud</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {stats.categoryStats.map((cat, i) => {
-                                                        const health = Math.round(((cat.total - cat.outOfStock) / cat.total) * 100) || 0;
-                                                        return (
-                                                            <tr key={i} className="border-b border-[#F1F3F4]">
-                                                                <td className="px-5 py-4">
-                                                                    <div className="flex items-center gap-3">
-                                                                        <Icon name={getItemIcon(cat.name)} size={20} className="text-[#5F6368]" />
-                                                                        <span className="font-bold text-sm text-[#202124]">{cat.name}</span>
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-5 py-4 text-center font-bold text-[#5F6368]">{cat.total}</td>
-                                                                <td className="px-5 py-4 text-center">
-                                                                    {cat.critical > 0 ? <span className="text-amber-600 font-bold bg-amber-50 px-3 py-1 rounded-lg">{cat.critical}</span> : <span className="text-[#BDC1C6]">-</span>}
-                                                                </td>
-                                                                <td className="px-5 py-4 text-center">
-                                                                    {cat.outOfStock > 0 ? <span className="text-red-600 font-black bg-red-50 px-3 py-1 rounded-lg">{cat.outOfStock}</span> : <span className="text-[#BDC1C6]">-</span>}
-                                                                </td>
-                                                                <td className="px-5 py-4 text-right">
-                                                                    <span className={`font-black text-sm ${health < 50 ? 'text-red-600' : health < 80 ? 'text-amber-600' : 'text-green-600'}`}>
-                                                                        {health}%
-                                                                    </span>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                    </div>
-
-                                    {/* NOTA VISUAL EN PANTALLA (NO SE IMPRIME) */}
-                                    <div className="text-center p-6 bg-blue-50 border border-blue-100 text-blue-700 rounded-3xl mt-8 font-medium text-sm no-print flex flex-col items-center gap-2">
-                                        <Icon name="picture_as_pdf" size={28} />
-                                        <p>El desglose exhaustivo del inventario, incluyendo los materiales que presentan un estado crítico, se incorporará automáticamente a este documento durante la generación del archivo PDF.</p>
-                                    </div>
-
-                                    {(stats.outOfStock > 0 || stats.criticalItems > 0) && (
-                                        <div className="mb-12 avoid-break hidden print:block">
-                                            <div className="flex items-center gap-3 mb-6"><Icon name="error" className="text-red-600" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Atención Operativa Requerida</h3></div>
-                                            <div className="overflow-x-auto"><table className="w-full text-left print-table border-collapse border border-[#E0E0E0]"><thead className="bg-[#F8F9FA]"><tr><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0]">Material Identificado</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Existencias Restantes</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Nivel de Seguridad</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Estado de Operación</th></tr></thead>
-                                                <tbody>{[...stats.outOfStockList, ...stats.criticalList].map((m, i) => (
-                                                    <tr key={i} className="border-b border-[#F1F3F4]"><td className="px-5 py-4"><p className="font-bold text-sm md:text-base text-[#202124]">{m.nombre}</p><p className="text-[10px] font-medium text-[#5F6368] mt-1">Código de Ref: {m.id} • {m.categoria}</p></td><td className="px-5 py-4 text-center font-black text-base">{parseFloat(m.stock).toLocaleString()}</td><td className="px-5 py-4 text-center text-gray-500 font-bold">{m.minimo}</td><td className="px-5 py-4 text-center text-[10px] font-black uppercase">{parseFloat(m.stock) <= 0 ? <span className="print-badge-red px-2 py-1 rounded">Sin Existencias</span> : <span className="print-badge-amber px-2 py-1 rounded">Nivel Crítico</span>}</td></tr>
-                                                ))}</tbody>
-                                            </table></div>
-                                        </div>
-                                    )}
-
-                                    <div className="page-break hidden print:block">
-                                        <div className="flex items-center gap-3 mb-8 border-b-2 border-[#202124] pb-4"><Icon name="inventory_2" className="text-[#202124]" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Inventario General Consolidado</h3></div>
-                                        {Object.keys(stats.groupedInventory).sort().map((categoria, idx) => (
-                                            <div key={idx} className="mb-12 avoid-break">
-                                                <h4 className="text-base font-bold text-white bg-[#1a73e8] uppercase mb-4 px-4 py-2 rounded-xl flex items-center gap-2 w-max">
-                                                    <Icon name={getItemIcon(categoria)} size={20} fill /> {categoria}
-                                                </h4>
-                                                {Object.keys(stats.groupedInventory[categoria]).sort().map((subcategoria, sIdx) => (
-                                                    <div key={sIdx} className="mb-8 ml-3 md:ml-6 border-l-2 border-[#E0E0E0] pl-4 md:pl-6">
-                                                        <h5 className="text-xs md:text-sm font-bold text-[#5F6368] uppercase tracking-widest mb-4">{subcategoria}</h5>
-                                                        <div className="overflow-x-auto"><table className="w-full text-left print-table border-collapse"><thead className="bg-[#F8F9FA] border-y border-[#E0E0E0]"><tr><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest w-1/2">Descripción del Material</th><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest text-center hidden md:table-cell">Inventario Mínimo</th><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest text-center">Existencias Actuales</th><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest text-center hidden sm:table-cell">Estado Operativo</th></tr></thead>
-                                                            <tbody className="divide-y divide-[#F1F3F4]">
-                                                                {stats.groupedInventory[categoria][subcategoria].map((item, iIdx) => {
-                                                                    const stock = parseFloat(item.stock) || 0; const min = parseFloat(item.minimo) || 0;
-                                                                    const status = stock <= 0 ? 'SIN EXISTENCIAS' : stock <= min ? 'NIVEL CRÍTICO' : 'NIVEL ÓPTIMO';
-                                                                    const statusClass = stock <= 0 ? 'text-red-600 font-black' : stock <= min ? 'text-amber-600 font-bold' : 'text-green-600 font-medium';
-                                                                    return (
-                                                                        <tr key={iIdx}><td className="px-4 py-3"><span className="text-xs md:text-sm font-bold text-[#202124] block">{item.nombre}</span><span className="text-[9px] font-medium text-[#5F6368] mt-0.5">Código de Ref: {item.id}</span></td><td className="px-4 py-3 text-center text-xs text-[#5F6368] hidden md:table-cell">{min}</td><td className="px-4 py-3 text-center text-sm font-black text-[#202124]">{stock.toLocaleString()} <span className="text-[9px] font-bold text-[#5F6368]">{item.unidad}</span></td><td className={`px-4 py-3 text-center text-[10px] hidden sm:table-cell ${statusClass}`}>{status}</td></tr>
-                                                                    )
-                                                                })}
-                                                            </tbody>
-                                                        </table></div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
+                                <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left"><thead className="bg-[#F8F9FA] text-[#5F6368] text-xs font-bold uppercase tracking-widest border-b"><tr><th className="px-6 md:px-8 py-4">Fecha / Operador</th><th className="px-6 md:px-8 py-4">Tipo</th><th className="px-6 md:px-8 py-4">Material</th><th className="px-6 md:px-8 py-4 text-right">Variación / Saldo</th></tr></thead><tbody className="divide-y">{historyData.movs.slice(0, 200).map((m, i) => (<tr key={i} className="hover:bg-[#F8F9FA] transition-colors"><td className="px-6 md:px-8 py-5"><p className="text-sm font-bold text-[#202124] whitespace-nowrap">{new Date(m.timestamp).toLocaleDateString()} <span className="text-xs font-medium text-[#5F6368]">{new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></p><p className="text-[10px] uppercase font-bold text-[#5F6368] mt-1">{m.usuario}</p></td><td className="px-6 md:px-8 py-5"><span className={`px-3 py-1.5 rounded-xl text-[10px] font-black inline-flex items-center gap-1 ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{m.tipo}</span></td><td className="px-6 md:px-8 py-5"><p className="text-sm font-bold text-[#202124]">{m.item_nombre}</p><p className="text-[10px] font-bold text-[#5F6368] mt-1 uppercase tracking-widest">{m.categoria_real}</p></td><td className="px-6 md:px-8 py-5 text-right"><p className={`text-sm font-bold mb-1 ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{parseFloat(m.diferencia) > 0 ? '+' : ''}{m.diferencia}</p><p className="font-black text-[#202124] text-xs bg-[#E0E0E0]/30 inline-block px-2 py-1 rounded-lg">= {m.stock_nuevo}</p></td></tr>))}</tbody></table></div>
                             </div>
                         )}
                     </main>
 
-                    {/* BOTTOM NAV MÓVIL */}
-                    <nav className="no-print lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#E0E0E0] px-2 py-3 pb-8 z-40 flex justify-around items-center rounded-t-[32px] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] gpu-accelerated">
+                    <nav className="no-print lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#E0E0E0] px-2 py-3 pb-8 z-40 flex justify-around items-center rounded-t-[32px] shadow-2xl">
                         {navItems.map(item => (
-                            <button key={item.id} onClick={() => { setView(item.id); resetNav(); setSearchTerm(''); triggerHaptic(); }} className={`flex flex-col items-center gap-1.5 p-1 flex-1 transition-transform active:scale-90 ${view === item.id ? 'text-[#1a73e8]' : 'text-[#BDC1C6]'}`}>
-                                <div className={`p-2.5 px-4 rounded-[20px] transition-colors ${view === item.id ? 'bg-[#E8F0FE]' : ''}`}>
-                                    <Icon name={item.icon} size={24} fill={view === item.id} />
-                                </div>
-                                <span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span>
-                            </button>
+                            <button key={item.id} onClick={() => { setView(item.id); resetNav(); setSearchTerm(''); triggerHaptic(); }} className={`flex flex-col items-center gap-1.5 p-1 flex-1 transition-transform active:scale-90 ${view === item.id ? 'text-[#1a73e8]' : 'text-[#BDC1C6]'}`}><div className={`p-2.5 px-4 rounded-[20px] transition-colors ${view === item.id ? 'bg-[#E8F0FE]' : ''}`}><Icon name={item.icon} size={24} fill={view === item.id} /></div><span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span></button>
                         ))}
-                        
-                        {/* --- BOTÓN SYNC MÓVIL --- */}
-                        <button onClick={() => { fetchData(); triggerHaptic(); }} disabled={isSyncing} className={`flex flex-col items-center gap-1.5 p-1 flex-1 transition-transform active:scale-90 ${isSyncing ? 'text-[#1a73e8]' : 'text-[#5F6368]'}`}>
-                            <div className={`p-2.5 px-4 rounded-[20px] transition-colors ${isSyncing ? 'bg-[#E8F0FE]' : 'bg-[#F1F3F4]'}`}>
-                                <Icon name="sync" size={24} spin={isSyncing} />
-                            </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest">Sincronizar</span>
-                        </button>
                     </nav>
 
-                    {/* MODAL DE TRANSACCIONES */}
-                    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-opacity duration-200 ${modalType ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-6 transition-opacity duration-200 ${modalType ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                         <div className="absolute inset-0 bg-[#202124]/40 backdrop-blur-md" onClick={() => !isSaving && setModalType(null)}></div>
                         <div className={`bg-white w-full max-w-sm rounded-[40px] shadow-2xl z-10 overflow-hidden gpu-accelerated transition-transform duration-300 ${modalType ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
-                            <div className={`p-8 text-white ${modalType === 'IN' ? 'bg-green-600' : modalType === 'OUT' ? 'bg-red-600' : 'bg-gray-800'}`}>
-                                <div className="flex justify-between items-start">
-                                    <div><p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Confirmar Registro de {modalType}</p><h3 className="text-2xl font-bold tracking-tight uppercase leading-tight">{selectedMaterial?.nombre}</h3></div>
-                                    <div className="p-3 bg-white/20 rounded-2xl">
-                                        <Icon name={modalType === 'IN' ? 'add_circle' : modalType === 'OUT' ? 'remove_circle' : 'tune'} size={32} fill />
-                                    </div>
-                                </div>
-                            </div>
+                            <div className={`p-8 text-white ${modalType === 'IN' ? 'bg-green-600' : modalType === 'OUT' ? 'bg-red-600' : 'bg-gray-800'}`}><div className="flex justify-between items-start"><div><p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Registro de {modalType}</p><h3 className="text-2xl font-bold leading-tight">{selectedMaterial?.nombre}</h3></div><div className="p-3 bg-white/20 rounded-2xl"><Icon name={modalType === 'IN' ? 'add_circle' : modalType === 'OUT' ? 'remove_circle' : 'tune'} size={32} fill /></div></div></div>
                             <form className="p-8 space-y-6" onSubmit={handleTransaction}>
-                                <div className="space-y-1.5"><label className="text-xs font-black text-[#5F6368] uppercase ml-1">Cantidad a Registrar ({selectedMaterial?.unidad})</label><input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-[24px] text-2xl font-black outline-none border-2 border-transparent focus:border-blue-200 transition-all text-[#202124]" placeholder="0.00" autoFocus /></div>
-                                <div className="space-y-1.5"><label className="text-xs font-black text-[#5F6368] uppercase ml-1">Observaciones (Opcional)</label><input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-[20px] text-sm font-medium outline-none border-2 border-transparent focus:border-blue-200 transition-all text-[#202124]" placeholder="Indique observaciones relevantes..." /></div>
-                                <div className="flex gap-4 pt-4">
-                                    <button type="button" disabled={isSaving} onClick={() => setModalType(null)} className="action-button flex-1 py-4 font-bold text-[#5F6368] bg-[#F8F9FA] hover:bg-[#E0E0E0] rounded-[20px] transition-colors">Cancelar Operación</button>
-                                    <button disabled={isSaving} className="action-button flex-[2] py-4 bg-[#1a73e8] text-white rounded-[24px] font-bold shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-colors flex items-center justify-center gap-2">{isSaving ? <Icon name="sync" size={20} spin /> : 'Confirmar Operación'}</button>
-                                </div>
+                                <div className="space-y-2"><label className="text-xs font-bold text-[#5F6368] uppercase ml-1">Cantidad ({selectedMaterial?.unidad})</label><input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-3xl outline-none text-2xl font-black text-[#202124] focus:ring-4 focus:ring-blue-100 transition-all" placeholder="0" autoFocus /></div>
+                                <div className="space-y-2"><label className="text-xs font-bold text-[#5F6368] uppercase ml-1">Comentario</label><input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-2xl outline-none text-sm font-medium text-[#202124] focus:ring-4 focus:ring-blue-100 transition-all" placeholder="Escribir nota..." /></div>
+                                <div className="flex gap-4 pt-4"><button type="button" disabled={isSaving} onClick={() => setModalType(null)} className="action-button flex-1 py-4 font-bold text-[#5F6368] bg-[#F8F9FA] hover:bg-[#E0E0E0] rounded-2xl">Cancelar</button><button disabled={isSaving} className="action-button flex-[2] py-4 bg-[#1a73e8] text-white rounded-3xl font-bold shadow-xl shadow-blue-100 flex items-center justify-center gap-2 hover:bg-[#1557b0] transition-colors">{isSaving ? <Icon name="sync" size={20} spin /> : 'Confirmar'}</button></div>
                             </form>
-                            {syncError && <div className="px-8 pb-4 text-[10px] font-bold text-red-500 text-center">{syncError}</div>}
                         </div>
                     </div>
                 </div>
