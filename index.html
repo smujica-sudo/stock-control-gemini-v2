@@ -399,6 +399,27 @@
 
                 return { movs, uniqueUsers, uniqueCategories, uniqueSubcategories };
             }, [data.movimientos, data.materiales, historyFilters]);
+            const handleSort = useCallback((column) => {
+    let newSort = '';
+    
+    // Lógica de alternancia (Toggle)
+    if (column === 'date') {
+        newSort = historyFilters.sort === 'date_desc' ? 'date_asc' : 'date_desc';
+    } else if (column === 'tipo') {
+        newSort = historyFilters.sort === 'tipo_asc' ? 'tipo_desc' : 'tipo_asc';
+    } else if (column === 'mat') {
+        newSort = historyFilters.sort === 'mat_asc' ? 'mat_desc' : 'mat_asc';
+    }
+    
+    // Actualizamos el estado global de filtros
+    setHistoryFilters(prev => ({
+        ...prev,
+        sort: newSort
+    }));
+    
+    // Confirmación táctil
+    triggerHaptic();
+}, [historyFilters.sort, triggerHaptic]);
 
             // Función para manejar el clic en una tarjeta y asegurar que el buscador se limpie para ir al detalle
             const handleItemClick = useCallback((item) => {
