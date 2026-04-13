@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kawas Tostaduría - Sistema de Gestión de Inventario</title>
+    <title>Kawas Tostaduría - Control de Stock</title>
     
     <!-- ☕ FAVICON VECTORIAL -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231a73e8'/%3E%3Ctext x='50' y='75' font-family='Arial, sans-serif' font-size='72' font-weight='bold' fill='%23ffffff' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E" />
@@ -13,7 +13,7 @@
         window.addEventListener('error', function(event) {
             var root = document.getElementById('root');
             if(root) {
-                root.innerHTML = '<div style="padding:30px; font-family:sans-serif; color:#d93025; background:#fce8e6; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;"><h2>⚠️ Excepción del Sistema</h2><p>Se ha producido un error durante el procesamiento de los datos.</p><p style="font-size:11px; margin-top:10px; color:#5F6368;">' + event.message + '</p><button onclick="window.location.reload()" style="margin-top:25px; padding:12px 24px; background:#d93025; color:white; border:none; border-radius:24px; font-weight:bold; cursor:pointer;">Reiniciar Aplicación</button></div>';
+                root.innerHTML = '<div style="padding:30px; font-family:sans-serif; color:#d93025; background:#fce8e6; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;"><h2>⚠️ Error de Sistema</h2><p>Ocurrió un problema procesando los datos.</p><p style="font-size:11px; margin-top:10px; color:#5F6368;">' + event.message + '</p><button onclick="window.location.reload()" style="margin-top:25px; padding:12px 24px; background:#d93025; color:white; border:none; border-radius:24px; font-weight:bold; cursor:pointer;">Recargar Aplicación</button></div>';
             }
         });
     </script>
@@ -88,7 +88,7 @@
     <div id="root">
         <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:#1a73e8;font-family:sans-serif;">
             <div style="width:44px;height:44px;border:4px solid #E8F0FE;border-top:4px solid #1a73e8;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
-            <p style="margin-top:20px;font-weight:700;font-size:1.1rem;letter-spacing:-0.5px;">Inicializando el sistema operativo...</p>
+            <p style="margin-top:20px;font-weight:700;font-size:1.1rem;letter-spacing:-0.5px;">Iniciando Kawas Stock...</p>
         </div>
     </div>
 
@@ -179,14 +179,14 @@
                 setSyncError(null);
                 try {
                     const response = await fetch(SCRIPT_URL, { redirect: "follow" });
-                    if (!response.ok) throw new Error(`El servidor remoto ha rechazado la conexión (Código HTTP ${response.status}).`);
+                    if (!response.ok) throw new Error(`Google Apps Script rechazó la conexión (Código ${response.status}).`);
                     const textResponse = await response.text();
                     try {
                         const json = JSON.parse(textResponse);
                         if (json && json.materiales) setData(json);
-                    } catch (err) { throw new Error("La estructura de los datos recibidos no concuerda con el formato predeterminado."); }
+                    } catch (err) { throw new Error("Los datos recibidos no tienen un formato válido."); }
                 } catch (e) {
-                    console.error("Fallo durante el proceso de sincronización de datos:", e);
+                    console.error("Error en sincronización:", e);
                     setSyncError(e.message);
                 } finally {
                     setIsSyncing(false);
@@ -199,11 +199,11 @@
 
             // --- LÓGICA DE LOGIN SEGURA ---
             const attemptLogin = useCallback((currentPin) => {
-                // Validación para evitar Race Conditions
+                // Validación para evitar Race Conditions (intentar login antes de cargar datos)
                 if (data.materiales.length === 0) return; 
                 
                 const validUser = (data.usuarios || []).find(u => u.pin == currentPin) || 
-                                 (currentPin === MASTER_PIN ? { nombre: "Administrador del Sistema", rol: "Acceso Privilegiado" } : null);
+                                 (currentPin === MASTER_PIN ? { nombre: "Admin Principal", rol: "Administrador" } : null);
                 
                 if (validUser) {
                     setUser(validUser);
@@ -211,7 +211,7 @@
                     triggerHaptic();
                 } else if (currentPin.length === 4) {
                     setPin('');
-                    alert("Las credenciales ingresadas son incorrectas. Por favor, proceda a intentarlo nuevamente.");
+                    alert("PIN incorrecto. Intente nuevamente.");
                     triggerHaptic();
                 }
             }, [data, triggerHaptic]);
@@ -248,7 +248,7 @@
                 triggerHaptic();
                 setIsSaving(true);
 
-                // Actualización Inmediata Local
+                // Actualización Inmediata Local (Optimistic Update)
                 let nuevoStock = parseFloat(selectedMaterial.stock) || 0;
                 if (modalType === 'IN') nuevoStock += qty;
                 if (modalType === 'OUT') nuevoStock -= qty;
@@ -264,7 +264,7 @@
                     }]
                 }));
 
-                // Sincronización Transaccional en Segundo Plano
+                // Sincronización en Segundo Plano
                 try {
                     await fetch(SCRIPT_URL, { 
                         method: 'POST', 
@@ -279,7 +279,7 @@
                         }) 
                     });
                 } catch (err) { 
-                    console.error("Excepción detectada durante el registro de la transacción:", err); 
+                    console.error("Error guardando:", err); 
                 } finally { 
                     setIsSaving(false); 
                 }
@@ -350,6 +350,7 @@
 
             const resetNav = useCallback(() => setNavPath({ category: null, subcategory: null, itemId: null }), []);
 
+            // Función para manejar el clic en una tarjeta y asegurar que el buscador se limpie
             const handleItemClick = useCallback((item) => {
                 setNavPath({ category: item.categoria, subcategory: item.subcategoria || 'General', itemId: item.id });
                 setSearchTerm(''); 
@@ -362,12 +363,14 @@
                 const matDict = {};
                 (data.materiales || []).forEach(m => { matDict[m.id] = m; });
                 
+                // 1. Enriquecer los movimientos
                 movs = movs.map(m => ({
                     ...m,
                     subcategoria: matDict[m.item_id]?.subcategoria || 'General',
                     categoria_real: matDict[m.item_id]?.categoria || m.categoria || 'Sin Categoría'
                 }));
 
+                // 2. Aplicar Filtros
                 if (historyFilters.user) movs = movs.filter(m => m.usuario === historyFilters.user);
                 if (historyFilters.category) movs = movs.filter(m => m.categoria_real === historyFilters.category);
                 if (historyFilters.subcategory) movs = movs.filter(m => m.subcategoria === historyFilters.subcategory);
@@ -380,6 +383,7 @@
                     movs = movs.filter(m => new Date(m.timestamp) <= end);
                 }
 
+                // 3. Ordenamiento Interactivo
                 movs.sort((a, b) => {
                     if (historyFilters.sort === 'date_desc') return new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime();
                     if (historyFilters.sort === 'date_asc') return new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime();
@@ -390,6 +394,7 @@
                     return 0;
                 });
 
+                // 4. Listas únicas seguras (fusiona usuarios actuales e históricos)
                 const uniqueUsers = [...new Set([
                     ...(data.usuarios || []).map(u => u.nombre),
                     ...(data.movimientos || []).map(m => m.usuario)
@@ -407,10 +412,10 @@
             }, [data.movimientos, data.materiales, data.usuarios, historyFilters]);
 
             const navItems = [
-                { id: 'dashboard', label: 'Panel Principal', icon: 'space_dashboard' },
-                { id: 'inventory', label: 'Búsqueda de Inventario', icon: 'search' },
-                { id: 'history', label: 'Registro Histórico', icon: 'history' },
-                { id: 'reports', label: 'Informes y Auditoría', icon: 'analytics' },
+                { id: 'dashboard', label: 'Inicio', icon: 'space_dashboard' },
+                { id: 'inventory', label: 'Buscador', icon: 'search' },
+                { id: 'history', label: 'Historial', icon: 'history' },
+                { id: 'reports', label: 'Reportes', icon: 'analytics' },
             ];
 
             // --- VISTA DE LOGIN ---
@@ -424,13 +429,13 @@
                                     <span className="text-5xl font-black font-sans leading-none">K</span>
                                 </div>
                             </div>
-                            <h1 className="text-3xl font-black tracking-tighter uppercase mb-2 text-[#202124]">Control de Inventario</h1>
-                            <p className="text-[#5F6368] text-sm mb-6 font-medium">Sistema de Gestión de Tostaduría</p>
+                            <h1 className="text-3xl font-black tracking-tighter uppercase mb-2 text-[#202124]">Stock Control</h1>
+                            <p className="text-[#5F6368] text-sm mb-6 font-medium">Kawas Tostaduría de Café</p>
 
                             {syncError && (
                                 <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-left font-medium mb-6 text-xs">
-                                    <strong>Error de Conexión:</strong> {syncError}
-                                    <button onClick={fetchData} className="mt-2 block bg-red-100 px-3 py-1.5 rounded-lg w-full text-center hover:bg-red-200 transition-colors">Reintentar Conexión</button>
+                                    <strong>Fallo de conexión:</strong> {syncError}
+                                    <button onClick={fetchData} className="mt-2 block bg-red-100 px-3 py-1.5 rounded-lg w-full text-center hover:bg-red-200 transition-colors">Reintentar</button>
                                 </div>
                             )}
 
@@ -439,13 +444,13 @@
                                     type="password" 
                                     inputMode="numeric"
                                     maxLength={4}
-                                    placeholder="Código de Acceso"
+                                    placeholder="PIN"
                                     value={pin}
                                     onChange={handlePinChange}
-                                    className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-2xl tracking-[0.5em] font-bold focus:ring-4 focus:ring-blue-100 outline-none transition-all border-2 border-transparent focus:border-blue-200"
+                                    className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] font-bold focus:ring-4 focus:ring-blue-100 outline-none transition-all border-2 border-transparent focus:border-blue-200"
                                 />
                                 <div className="h-4 flex items-center justify-center">
-                                    {isSyncing && data.materiales.length === 0 && <span className="text-xs font-bold text-blue-600 flex items-center gap-2"><Icon name="sync" size={14} spin /> Estableciendo conexión con el servidor...</span>}
+                                    {isSyncing && data.materiales.length === 0 && <span className="text-xs font-bold text-blue-600 flex items-center gap-2"><Icon name="sync" size={14} spin /> Conectando Servidor...</span>}
                                 </div>
                             </div>
                         </div>
@@ -458,14 +463,14 @@
                 <div className="min-h-screen bg-[#F8F9FA] text-[#202124] font-sans flex flex-col lg:flex-row">
                     
                     {/* BARRA LATERAL FIJA (SOLO DESKTOP) */}
-                    <aside className="no-print hidden lg:flex flex-col w-72 bg-white border-r border-[#E0E0E0] fixed h-full z-20">
+                    <aside className="no-print hidden lg:flex flex-col w-64 bg-white border-r border-[#E0E0E0] fixed h-full z-20">
                         <div className="p-8">
                             <div className="flex items-center gap-3">
                                 <img src="./logo.png" alt="K" className="w-10 h-10 object-contain shrink-0" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                                 <div style={{display: 'none'}} className="w-10 h-10 bg-[#1a73e8] rounded-xl flex-col items-center justify-center text-white shadow-md shadow-blue-200 shrink-0">
                                     <span className="text-2xl font-black font-sans leading-none">K</span>
                                 </div>
-                                <span className="font-black text-xl tracking-tighter uppercase leading-tight text-[#202124]">Gestión de<br/>Inventario</span>
+                                <span className="font-black text-xl tracking-tighter uppercase text-[#202124] leading-tight">Stock<br/>Control</span>
                             </div>
                         </div>
                         <nav className="flex-1 px-4 space-y-2">
@@ -487,7 +492,7 @@
                                 className={`w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl transition-all border shadow-sm font-bold active:scale-95 ${isSyncing ? 'bg-[#F1F3F4] border-[#E0E0E0] text-[#BDC1C6]' : 'bg-white border-[#E0E0E0] text-[#1a73e8] hover:bg-[#F8F9FA]'}`}
                             >
                                 <Icon name="sync" size={20} spin={isSyncing} /> 
-                                <span className="text-sm">Sincronizar Datos</span>
+                                <span className="text-sm">Sincronizar</span>
                             </button>
                             <button 
                                 onClick={handleLogout} 
@@ -512,16 +517,16 @@
                     </aside>
                     
                     {/* CONTENIDO PRINCIPAL */}
-                    <main className="flex-1 lg:ml-72 p-4 lg:p-10 pb-28 lg:pb-10 max-w-[1400px] w-full mx-auto">
+                    <main className="flex-1 lg:ml-64 p-4 lg:p-10 pb-28 lg:pb-10 max-w-[1400px] w-full mx-auto">
                         
-                        {/* Header Superior Móvil */}
+                        {/* Header Superior Móvil (Para mostrar sync) */}
                         <div className="lg:hidden flex items-center justify-between mb-6">
                             <h2 className="text-lg font-black tracking-tighter uppercase text-[#202124] flex items-center gap-2">
                                 <img src="./logo.png" alt="K" className="w-8 h-8 object-contain shrink-0" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                                 <div style={{display: 'none'}} className="w-8 h-8 bg-[#1a73e8] rounded-[10px] flex-col items-center justify-center text-white shadow-sm shrink-0">
                                     <span className="text-lg font-black font-sans leading-none">K</span>
                                 </div>
-                                Gestión Inventario
+                                Stock Control
                             </h2>
                             <div className="flex items-center gap-3">
                                 <div className="flex items-center gap-2">
@@ -538,8 +543,8 @@
                         {view === 'dashboard' && (
                             <div className="space-y-8 fade-in-up">
                                 <div>
-                                    <h2 className="text-3xl font-bold tracking-tight text-[#202124]">Panel Principal</h2>
-                                    <p className="text-[#5F6368] mt-1 font-medium">Monitorización del estado de insumos críticos para las operaciones de producción.</p>
+                                    <h2 className="text-3xl font-bold">Panel de Control</h2>
+                                    <p className="text-[#5F6368] mt-1">Estado de insumos críticos para producción.</p>
                                 </div>
 
                                 {/* Alerta Crítica Global Expandida */}
@@ -552,7 +557,7 @@
                                                 </div>
                                                 <div>
                                                     <h4 className="text-xl md:text-2xl font-black uppercase tracking-tight">Acción Requerida</h4>
-                                                    <p className="text-red-100 text-sm mb-4">Los materiales detallados a continuación presentan un nivel de existencias nulo, por lo que se requiere proceder con su reposición inmediata:</p>
+                                                    <p className="text-red-100 text-sm mb-4">Los siguientes materiales requieren reposición inmediata:</p>
                                                     <div className="flex flex-wrap gap-2">
                                                         {stats.outOfStockList.map(item => (
                                                             <span key={item.id} className="bg-white/10 border border-white/20 px-3 py-1.5 rounded-lg text-xs font-bold backdrop-blur-sm flex items-center gap-1.5">
@@ -563,7 +568,7 @@
                                                 </div>
                                             </div>
                                             <button onClick={() => { setView('inventory'); setSearchTerm(''); triggerHaptic(); }} className="bg-white text-red-600 px-8 py-4 rounded-full font-black text-sm hover:bg-red-50 transition-all active:scale-95 shadow-lg shrink-0 flex items-center gap-2">
-                                                <Icon name="assignment_turned_in" size={20} fill /> Gestionar Inventario
+                                                <Icon name="assignment_turned_in" size={20} fill /> Gestionar Stock
                                             </button>
                                         </div>
                                     </div>
@@ -572,168 +577,221 @@
                                 {/* KPI Row */}
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                                     {[
-                                        { label: 'Total de Artículos', val: stats.totalItems, icon: 'category', color: 'text-blue-600', bg: 'bg-blue-50' },
-                                        { label: 'Existencias en Nivel Crítico', val: stats.criticalItems, icon: 'warning', color: 'text-amber-600', bg: 'bg-amber-50' },
-                                        { label: 'Artículos Agotados', val: stats.outOfStock, icon: 'error', color: 'text-red-600', bg: 'bg-red-50' },
-                                        { label: 'Índice de Disponibilidad', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%`, icon: 'health_and_safety', color: 'text-green-600', bg: 'bg-green-50' },
+                                        { label: 'Ítems Totales', val: stats.totalItems, icon: 'category', color: 'text-blue-600', bg: 'bg-blue-50' },
+                                        { label: 'Stock Crítico', val: stats.criticalItems, icon: 'warning', color: 'text-amber-600', bg: 'bg-amber-50' },
+                                        { label: 'Agotados', val: stats.outOfStock, icon: 'error', color: 'text-red-600', bg: 'bg-red-50' },
+                                        { label: 'Salud Bodega', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%`, icon: 'health_and_safety', color: 'text-green-600', bg: 'bg-green-50' },
                                     ].map((kpi, i) => (
-                                        <div key={i} className={`bg-white p-4 md:p-8 rounded-[24px] md:rounded-[40px] border shadow-sm ${kpi.label === 'Artículos Agotados' && stats.outOfStock > 0 ? 'border-red-300 shadow-red-100 shadow-lg' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${i * 50}ms` }}>
-                                            <div className={`w-10 h-10 md:w-12 md:h-12 ${kpi.bg} ${kpi.color} rounded-xl md:rounded-2xl flex items-center justify-center mb-3 md:mb-4`}><Icon name={kpi.icon} size={24} fill /></div>
-                                            <p className="text-[9px] md:text-[10px] font-bold text-[#5F6368] uppercase tracking-widest leading-tight mb-1">{kpi.label}</p>
-                                            <p className="text-2xl md:text-3xl font-black text-[#202124] tracking-tight">{kpi.val}</p>
+                                        <div key={i} className={`bg-white p-4 md:p-8 rounded-[24px] md:rounded-[40px] border transition-all fade-in-up ${kpi.label === 'Agotados' && stats.outOfStock > 0 ? 'border-red-300 shadow-lg shadow-red-100' : 'border-[#E0E0E0] shadow-sm'}`} style={{ animationDelay: `${i * 50}ms` }}>
+                                            <div className={`w-10 h-10 md:w-12 md:h-12 ${kpi.bg} ${kpi.color} rounded-[14px] md:rounded-2xl flex items-center justify-center mb-3 md:mb-4`}>
+                                                <Icon name={kpi.icon} size={24} fill />
+                                            </div>
+                                            <p className="text-[9px] md:text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">{kpi.label}</p>
+                                            <p className="text-2xl md:text-3xl font-black mt-1 md:mt-2 text-[#202124] tracking-tight">{kpi.val}</p>
                                         </div>
                                     ))}
                                 </div>
 
-                                {/* Desglose por Categoría */}
+                                {/* DESGLOSE MÉTRICO POR CATEGORÍA */}
                                 <div className="mt-6 md:mt-12 fade-in-up" style={{ animationDelay: '200ms' }}>
-                                    <h3 className="text-lg md:text-xl font-bold tracking-tight text-[#202124] mb-4 md:mb-6 flex items-center gap-2"><Icon name="pie_chart" size={24} className="text-[#1a73e8]" fill /> Análisis Detallado por Categorías</h3>
+                                    <h3 className="text-lg md:text-xl font-bold tracking-tight text-[#202124] mb-4 md:mb-6 flex items-center gap-2">
+                                        <Icon name="pie_chart" size={24} className="text-[#1a73e8]" fill /> Desglose por Categoría
+                                    </h3>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-6">
                                         {stats.categoryStats.map((cat, idx) => (
                                             <div 
                                                 key={idx} 
                                                 onClick={() => { 
                                                     setView('inventory'); 
-                                                    resetNav(); 
+                                                    setSearchTerm(''); 
                                                     setNavPath({ category: cat.name, subcategory: null, itemId: null }); 
                                                     triggerHaptic(); 
                                                 }} 
-                                                className={`bg-white p-4 md:p-8 rounded-[24px] md:rounded-[32px] border cursor-pointer hover:shadow-lg transition-all group nav-card ${cat.outOfStock > 0 ? 'border-red-300' : cat.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'}`}
+                                                className={`bg-white p-4 md:p-8 rounded-[24px] md:rounded-[32px] border transition-all cursor-pointer hover:shadow-lg group nav-card ${cat.outOfStock > 0 ? 'border-red-300' : cat.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'}`}
                                             >
-                                                <div className="flex justify-between items-start mb-4">
-                                                    <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-[20px] flex items-center justify-center transition-transform group-hover:scale-110 shrink-0 ${cat.outOfStock > 0 ? 'bg-red-50 text-red-600' : cat.critical > 0 ? 'bg-amber-50 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}><Icon name={getItemIcon(cat.name)} size={28} fill /></div>
-                                                    <div className="flex flex-col gap-1 items-end ml-3">
-                                                        {cat.outOfStock > 0 && <span className="bg-red-600 text-white px-2 py-1 rounded-[10px] text-[9px] font-black animate-pulse flex items-center gap-1 shadow-sm"><Icon name="error" size={12} fill /> {cat.outOfStock} SIN EXISTENCIAS</span>}
-                                                        {cat.critical > 0 && <span className="bg-amber-100 text-amber-700 px-2 py-1 rounded-[10px] text-[9px] font-black flex items-center gap-1"><Icon name="warning" size={12} fill /> {cat.critical} NIVEL CRÍTICO</span>}
-                                                        {cat.outOfStock === 0 && cat.critical === 0 && <span className="bg-green-50 text-green-600 px-2 py-1 rounded-[10px] text-[9px] font-black flex items-center gap-1"><Icon name="check_circle" size={12} fill /> NIVEL ÓPTIMO</span>}
+                                                <div className="flex justify-between items-start mb-3 md:mb-6">
+                                                    <div className={`w-12 h-12 md:w-14 md:h-14 rounded-xl md:rounded-[20px] flex items-center justify-center transition-transform group-hover:scale-110 shrink-0 ${cat.outOfStock > 0 ? 'bg-red-50 text-red-600' : cat.critical > 0 ? 'bg-amber-50 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}>
+                                                        <Icon name={getItemIcon(cat.name)} size={24} fill />
+                                                    </div>
+                                                    <div className="flex flex-col gap-1 md:gap-1.5 items-end ml-3">
+                                                        {cat.outOfStock > 0 && (
+                                                            <span className="bg-red-600 text-white px-2 py-1 md:px-3 md:py-1.5 rounded-[10px] md:rounded-xl text-[9px] md:text-[10px] font-black animate-pulse flex items-center gap-1 shadow-sm">
+                                                                <Icon name="error" size={12} fill /> {cat.outOfStock} AGOTADO{cat.outOfStock !== 1 ? 'S' : ''}
+                                                            </span>
+                                                        )}
+                                                        {cat.critical > 0 && (
+                                                            <span className="bg-amber-100 text-amber-700 px-2 py-1 md:px-3 md:py-1.5 rounded-[10px] md:rounded-xl text-[9px] md:text-[10px] font-black flex items-center gap-1">
+                                                                <Icon name="warning" size={12} fill /> {cat.critical} CRÍTICO{cat.critical !== 1 ? 'S' : ''}
+                                                            </span>
+                                                        )}
+                                                        {cat.outOfStock === 0 && cat.critical === 0 && (
+                                                            <span className="bg-green-50 text-green-600 px-2 py-1 md:px-3 md:py-1.5 rounded-[10px] md:rounded-xl text-[9px] md:text-[10px] font-black flex items-center gap-1">
+                                                                <Icon name="check_circle" size={12} fill /> ÓPTIMO
+                                                            </span>
+                                                        )}
                                                     </div>
                                                 </div>
                                                 <h4 className="text-base md:text-xl font-bold text-[#202124] group-hover:text-blue-600 transition-colors line-clamp-1">{cat.name}</h4>
-                                                <div className="mt-3 md:mt-4 flex items-center justify-between border-t border-[#F1F3F4] pt-3 md:pt-4"><p className="text-[11px] md:text-xs text-[#5F6368] font-medium">{cat.total} artículos registrados</p><p className="text-[10px] font-bold text-[#1a73e8] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Consultar inventario <Icon name="arrow_forward" size={14} /></p></div>
+                                                <div className="mt-3 md:mt-4 flex items-center justify-between border-t border-[#F1F3F4] pt-3 md:pt-4">
+                                                    <p className="text-[11px] md:text-xs text-[#5F6368] font-medium">{cat.total} ítems totales</p>
+                                                    <p className="text-[10px] font-bold text-[#1a73e8] flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                        Ver inventario <Icon name="arrow_forward" size={14} />
+                                                    </p>
+                                                </div>
                                             </div>
                                         ))}
                                     </div>
                                 </div>
                             </div>
                         )}
-
-                        {/* 2. BUSCADOR / INVENTARIO */}
+                        
+                        {/* INVENTARIO Y BUSCADOR */}
                         {view === 'inventory' && (
                             <div className="space-y-6 fade-in-up pb-6">
-                                <div className="bg-white p-4 md:p-6 rounded-[32px] border border-[#E0E0E0] shadow-sm flex items-center gap-4 focus-within:ring-4 focus-within:ring-blue-100 transition-all">
-                                    <Icon name="search" size={28} className="text-[#5F6368]" />
-                                    <input 
-                                        type="text" 
-                                        placeholder="Ingrese el término de búsqueda correspondiente al material o categoría..." 
-                                        value={searchTerm} 
-                                        onChange={e => {setSearchTerm(e.target.value); if(e.target.value) resetNav();}} 
-                                        className="w-full bg-transparent text-xl font-medium outline-none placeholder-[#BDC1C6]" 
-                                    />
-                                </div>
-
-                                <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
-                                    <button onClick={() => { resetNav(); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap flex items-center gap-1.5 transition-all ${!navPath.category ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name="search" size={16} fill={!navPath.category} /> Búsqueda de Inventario</button>
-                                    {navPath.category && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, subcategory:null, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap flex items-center gap-1.5 transition-all ${!navPath.subcategory ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category)} size={16} fill={!navPath.subcategory} /> {navPath.category}</button></>}
-                                    {navPath.subcategory && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, itemId:null}); triggerHaptic(); }} className="px-5 py-2.5 bg-[#1a73e8] text-white rounded-full text-xs font-bold uppercase whitespace-nowrap shadow-md flex items-center gap-1.5 shadow-blue-100"><Icon name="folder_open" size={16} fill /> {navPath.subcategory}</button></>}
-                                </div>
-
-                                <div className="grid grid-cols-1 gap-4">
-                                    {/* Nivel: Categorías */}
-                                    {navigationData.level === 'categories' && navigationData.items.map(cat => (
-                                        <div key={cat.name} onClick={() => { setNavPath({ ...navPath, category: cat.name }); triggerHaptic(); }} className="bg-white p-6 rounded-[32px] border border-[#E0E0E0] flex items-center justify-between cursor-pointer hover:shadow-md transition-all nav-card group">
-                                            <div className="flex items-center gap-4"><div className="w-14 h-14 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105"><Icon name={getItemIcon(cat.name)} size={28} fill /></div><div className="text-left"><h4 className="text-lg font-bold text-[#202124]">{cat.name}</h4><p className="text-xs font-medium text-[#5F6368]">{cat.count} clasificaciones de producto • {cat.out > 0 ? <span className="text-red-600 font-bold">{cat.out} sin existencias</span> : 'Disponibilidad total'}</p></div></div>
-                                            <Icon name="chevron_right" className="text-[#BDC1C6] group-hover:text-blue-600 transition-colors" />
-                                        </div>
-                                    ))}
-
-                                    {/* Nivel: Subcategorías */}
-                                    {navigationData.level === 'subcategories' && navigationData.items.map(sub => (
-                                        <div key={sub.name} onClick={() => { setNavPath({ ...navPath, subcategory: sub.name }); triggerHaptic(); }} className="bg-white p-6 rounded-[32px] border border-[#E0E0E0] flex items-center justify-between cursor-pointer hover:shadow-md transition-all nav-card group">
-                                            <div className="flex items-center gap-4"><div className="w-14 h-14 bg-gray-50 text-[#5F6368] rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105"><Icon name="folder" size={28} fill /></div><div className="text-left"><h4 className="text-lg font-bold text-[#202124]">{sub.name}</h4><p className="text-xs font-medium text-[#5F6368]">{sub.count} materiales registrados en el sistema</p></div></div>
-                                            <Icon name="chevron_right" className="text-[#BDC1C6] group-hover:text-blue-600 transition-colors" />
-                                        </div>
-                                    ))}
-
-                                    {/* Nivel: Ítems Finales (y Búsqueda) */}
-                                    {(navigationData.level === 'items' || navigationData.level === 'search') && navigationData.items.map(m => {
-                                        const isOut = (parseFloat(m.stock) || 0) <= 0; const isCrit = m.stock <= m.minimo && m.stock > 0;
-                                        const days = stats.getDaysLeft(m.id, m.stock);
-                                        return (
-                                            <div key={m.id} onClick={() => { setNavPath({ ...navPath, itemId: m.id, category: m.categoria, subcategory: m.subcategoria || 'General' }); setSearchTerm(''); triggerHaptic(); }} className={`bg-white p-6 rounded-[32px] border transition-all flex flex-col md:flex-row md:items-center justify-between gap-6 cursor-pointer hover:shadow-md nav-card ${isOut ? 'border-red-300 bg-red-50/5' : isCrit ? 'border-amber-300' : 'border-[#E0E0E0]'}`}>
-                                                <div className="flex items-center gap-4">
-                                                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shrink-0 ${isOut ? 'bg-red-600 text-white' : isCrit ? 'bg-amber-100 text-amber-600' : 'bg-blue-50 text-blue-600'}`}><Icon name={getItemIcon(m.categoria, m.subcategoria, m.nombre)} size={28} fill /></div>
-                                                    <div><h4 className="text-lg md:text-xl font-bold tracking-tight text-[#202124]">{m.nombre}</h4><p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest">{m.categoria} / {m.subcategoria || 'General'}</p></div>
-                                                </div>
-                                                <div className="flex items-center gap-6 md:px-6 border-t md:border-t-0 pt-4 md:pt-0 border-[#F1F3F4] justify-between md:justify-end">
-                                                    <div className="text-left md:text-center"><p className="text-[9px] font-bold text-[#5F6368] uppercase tracking-widest mb-1">Existencias</p><div className="flex items-baseline gap-1"><span className={`text-2xl md:text-3xl font-black tracking-tighter ${isOut ? 'text-red-600' : isCrit ? 'text-amber-600' : 'text-[#202124]'}`}>{parseFloat(m.stock).toLocaleString()}</span><span className="text-[10px] font-bold text-[#5F6368] lowercase">{m.unidad}</span></div></div>
-                                                    <div className="text-right md:text-center"><p className="text-[9px] font-bold text-[#5F6368] uppercase tracking-widest mb-1">Autonomía Estimada</p><div className="flex items-baseline gap-1"><span className={`text-xl md:text-2xl font-black tracking-tight ${isOut ? 'text-red-300' : 'text-[#1a73e8]'}`}>{isOut ? '0' : days}</span><span className="text-[10px] font-bold text-[#5F6368] lowercase">días</span></div></div>
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                    {navigationData.items && navigationData.items.length === 0 && (
-                                        <div className="text-center py-20 bg-white rounded-[40px] border border-dashed border-[#E0E0E0] fade-in-up">
-                                            <Icon name="search_off" size={48} className="text-[#BDC1C6] mb-4" />
-                                            <p className="text-[#5F6368] font-medium">No se han encontrado registros que coincidan con los criterios de búsqueda especificados.</p>
+                                <div className="search-bar sticky top-0 z-10 bg-[#F8F9FA]/90 backdrop-blur-md pb-6 pt-2">
+                                    <div className="relative group">
+                                        <Icon name="search" className="absolute left-6 top-1/2 -translate-y-1/2 text-[#5F6368] transition-colors group-focus-within:text-blue-600" size={24} />
+                                        <input 
+                                            type="text" 
+                                            placeholder="Buscar materiales, categorías..."
+                                            value={searchTerm}
+                                            onChange={e => { setSearchTerm(e.target.value); if(e.target.value) resetNav(); }}
+                                            className="w-full pl-16 pr-6 py-5 bg-white border border-[#E0E0E0] rounded-[30px] shadow-sm focus:ring-4 focus:ring-blue-100 outline-none transition-all text-lg font-medium text-[#202124]"
+                                        />
+                                    </div>
+                                    
+                                    {/* Breadcrumbs */}
+                                    {!searchTerm && (
+                                        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-3 mt-2">
+                                            <button onClick={() => { resetNav(); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1 ${!navPath.category ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}>
+                                                <Icon name="search" size={16} fill={!navPath.category} /> Buscador
+                                            </button>
+                                            {navPath.category && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, subcategory:null, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1.5 ${navPath.category && !navPath.subcategory ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category)} size={16} fill={navPath.category && !navPath.subcategory} /> {navPath.category}</button></>}
+                                            {navPath.subcategory && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1.5 ${navPath.category && navPath.subcategory && !navPath.itemId ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category, navPath.subcategory)} size={16} fill={navPath.category && navPath.subcategory && !navPath.itemId} /> {navPath.subcategory}</button></>}
+                                            {navPath.itemId && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button className="px-5 py-2.5 bg-[#1a73e8] text-white rounded-full text-xs font-bold uppercase whitespace-nowrap shadow-md shadow-blue-200 flex items-center gap-1"><Icon name="info" size={16} fill /> Detalle</button></>}
                                         </div>
                                     )}
                                 </div>
-                            </div>
-                        )}
 
-                        {/* 3. FICHA TÉCNICA / DETALLE DE PRODUCTO */}
-                        {navigationData.level === 'detail' && navigationData.item && (
-                            <div className="space-y-6 fade-in-up">
-                                <button onClick={() => setNavPath({ ...navPath, itemId: null })} className="flex items-center gap-2 text-[#5F6368] font-bold hover:text-blue-600 transition-all mb-2"><Icon name="arrow_back" size={20} /> Regresar al directorio</button>
-                                
-                                <div className="bg-white p-8 md:p-12 rounded-[40px] border border-[#E0E0E0] shadow-sm">
-                                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-8">
-                                        <div className="flex items-center gap-6">
-                                            <div className={`w-20 h-20 md:w-24 md:h-24 rounded-[28px] md:rounded-[32px] flex items-center justify-center shrink-0 ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-red-600 text-white shadow-xl shadow-red-200' : 'bg-[#1a73e8] text-white shadow-xl shadow-blue-200'}`}><Icon name={getItemIcon(navigationData.item.categoria, navigationData.item.subcategoria, navigationData.item.nombre)} size={44} fill /></div>
-                                            <div>
-                                                <p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest mb-1 md:mb-2">{navigationData.item.categoria} / {navigationData.item.subcategoria || 'General'}</p>
-                                                <h3 className="text-3xl md:text-4xl font-black tracking-tighter uppercase text-[#202124] leading-tight mb-2">{navigationData.item.nombre}</h3>
-                                                <div className="flex gap-2"><span className="bg-[#F1F3F4] text-[#5F6368] px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider">Código de Referencia: {navigationData.item.id}</span><span className="bg-[#F1F3F4] text-[#5F6368] px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider">Inventario Mínimo: {navigationData.item.minimo} {navigationData.item.unidad}</span></div>
+                                {/* NAVEGACIÓN CARPETAS O ÍTEMS */}
+                                {navigationData.level === 'detail' ? (
+                                    <div className="space-y-6 fade-in-up">
+                                        <div className="bg-white rounded-[40px] md:rounded-[48px] border border-[#E0E0E0] p-6 md:p-10 shadow-sm">
+                                            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 md:gap-8">
+                                                <div className="flex items-center gap-5 md:gap-6">
+                                                    <div className={`w-20 h-20 md:w-24 md:h-24 rounded-[28px] md:rounded-[32px] flex items-center justify-center shrink-0 ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-red-600 text-white shadow-xl shadow-red-200' : 'bg-[#1a73e8] text-white shadow-xl shadow-blue-200'}`}>
+                                                        <Icon name={getItemIcon(navigationData.item.categoria, navigationData.item.subcategoria, navigationData.item.nombre)} size={44} fill />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest mb-1 md:mb-2">{navigationData.item.categoria} / {navigationData.item.subcategoria || 'General'}</p>
+                                                        <h3 className="text-3xl md:text-4xl font-black tracking-tight text-[#202124] leading-tight mb-3">{navigationData.item.nombre}</h3>
+                                                        <div className="flex items-center gap-3"><span className="text-xs font-bold bg-[#F1F3F4] px-4 py-2 rounded-xl text-[#5F6368]">Ref: {navigationData.item.id}</span><span className="text-xs font-bold bg-[#F1F3F4] px-4 py-2 rounded-xl text-[#5F6368]">Min: {navigationData.item.minimo}</span></div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0">
+                                                    <button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('IN'); triggerHaptic(); }} className="action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-4 bg-blue-50 text-blue-600 rounded-[24px] hover:bg-blue-600 hover:text-white transition-colors min-w-[90px]"><Icon name="add_circle" size={28} fill /><span className="text-[10px] font-bold uppercase">Ingresar</span></button>
+                                                    <button disabled={parseFloat(navigationData.item.stock) <= 0} onClick={() => { setSelectedMaterial(navigationData.item); setModalType('OUT'); triggerHaptic(); }} className={`action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-4 rounded-[24px] transition-colors min-w-[90px] ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-[#F1F3F4] text-[#BDC1C6]' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name="remove_circle" size={28} fill /><span className="text-[10px] font-bold uppercase">Consumir</span></button>
+                                                    <button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('ADJUST'); triggerHaptic(); }} className="action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-4 bg-[#F1F3F4] text-[#5F6368] rounded-[24px] hover:bg-[#5F6368] hover:text-white transition-colors min-w-[90px]"><Icon name="tune" size={28} fill /><span className="text-[10px] font-bold uppercase">Ajustar</span></button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mt-6 border-t border-[#F1F3F4] pt-8">
+                                                <div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]">
+                                                    <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2">Stock Actual</p>
+                                                    <div className={`flex items-baseline gap-1.5 ${parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : 'text-[#202124]'}`}>
+                                                        <span className="text-4xl md:text-5xl font-black tracking-tight">{parseFloat(navigationData.item.stock).toLocaleString()}</span>
+                                                        <span className="text-sm md:text-base font-bold text-[#5F6368] tracking-normal lowercase">{navigationData.item.unidad}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]">
+                                                    <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2">Alcance Estimado</p>
+                                                    <div className="flex items-baseline gap-1.5 text-[#1a73e8]">
+                                                        <span className="text-4xl md:text-5xl font-black tracking-tight">{stats.getDaysLeft(navigationData.item.id, navigationData.item.stock)}</span>
+                                                        <span className="text-sm md:text-base font-bold text-[#5F6368] tracking-normal lowercase">días</span>
+                                                    </div>
+                                                </div>
+                                                <div className="col-span-2 md:col-span-1 bg-[#F8F9FA] p-6 md:p-8 rounded-[32px] flex items-center gap-5">
+                                                    <Icon name={parseFloat(navigationData.item.stock) <= 0 ? 'error' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'warning' : 'check_circle'} size={44} fill className={parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'text-amber-600' : 'text-green-600'} />
+                                                    <div>
+                                                        <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-1">Estado</p>
+                                                        <p className="text-xl font-bold uppercase tracking-tight text-[#202124]">{(parseFloat(navigationData.item.stock) || 0) <= 0 ? 'Agotado' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'Crítico' : 'Óptimo'}</p>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                        <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0">
-                                            <button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('IN'); triggerHaptic(); }} className="action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-5 bg-blue-50 text-blue-600 rounded-[28px] hover:bg-blue-600 hover:text-white transition-all min-w-[100px]"><Icon name="add_circle" size={28} fill /><span className="text-[10px] font-black uppercase text-center leading-tight">Registrar Entrada</span></button>
-                                            <button disabled={parseFloat(navigationData.item.stock) <= 0} onClick={() => { setSelectedMaterial(navigationData.item); setModalType('OUT'); triggerHaptic(); }} className={`action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-5 rounded-[28px] transition-all min-w-[100px] ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-[#F1F3F4] text-[#BDC1C6]' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name="remove_circle" size={28} fill /><span className="text-[10px] font-black uppercase text-center leading-tight">Registrar Salida</span></button>
-                                            <button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('ADJUST'); triggerHaptic(); }} className="action-button flex-1 md:flex-none flex flex-col items-center justify-center gap-2 p-5 bg-[#F1F3F4] text-[#5F6368] rounded-[28px] hover:bg-[#5F6368] hover:text-white transition-all min-w-[100px]"><Icon name="tune" size={28} fill /><span className="text-[10px] font-black uppercase text-center leading-tight">Ajustar Inventario</span></button>
-                                        </div>
-                                    </div>
-                                    
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6 mt-10 border-t border-[#F1F3F4] pt-10">
-                                        <div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2 ml-1">Existencias Actuales</p><div className={`flex items-baseline gap-1.5 ${parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : 'text-blue-600'}`}><span className="text-4xl md:text-5xl font-black tracking-tight">{parseFloat(navigationData.item.stock).toLocaleString()}</span><span className="text-sm md:text-base font-bold text-[#5F6368] lowercase">{navigationData.item.unidad}</span></div></div>
-                                        <div className="bg-[#F8F9FA] p-6 md:p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2 ml-1">Autonomía Estimada</p><div className="flex items-baseline gap-1.5 text-[#202124]"><span className="text-4xl md:text-5xl font-black tracking-tight">{stats.getDaysLeft(navigationData.item.id, navigationData.item.stock)}</span><span className="text-sm md:text-base font-bold text-[#5F6368] lowercase">días</span></div></div>
-                                        <div className="col-span-2 md:col-span-1 bg-[#F8F9FA] p-6 md:p-8 rounded-[32px] flex items-center gap-5">
-                                            <Icon name={parseFloat(navigationData.item.stock) <= 0 ? 'error' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'warning' : 'check_circle'} size={48} fill className={parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'text-amber-600' : 'text-green-600'} />
-                                            <div><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-1">Estado Operativo</p><p className="text-xl font-bold uppercase tracking-tight text-[#202124]">{parseFloat(navigationData.item.stock) <= 0 ? 'Sin Existencias' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'Nivel Crítico' : 'Nivel Óptimo'}</p></div>
-                                        </div>
-                                    </div>
-                                </div>
 
-                                <div className="bg-white rounded-[40px] border border-[#E0E0E0] overflow-hidden">
-                                    <div className="p-6 md:p-8 border-b border-[#F1F3F4] flex items-center gap-3"><Icon name="history" className="text-blue-600" size={24} /><h4 className="text-xl font-bold tracking-tight text-[#202124]">Registro Histórico Reciente</h4></div>
-                                    <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left"><thead className="bg-[#F8F9FA] text-[10px] font-bold uppercase text-[#5F6368] tracking-widest"><tr><th className="px-6 md:px-8 py-5">Fecha / Operador</th><th className="px-6 md:px-8 py-5">Tipo de Operación</th><th className="px-6 md:px-8 py-5 text-right">Variación Neta</th><th className="px-6 md:px-8 py-5 text-right">Balance Final</th></tr></thead>
-                                        <tbody className="divide-y divide-[#F1F3F4]">{navigationData.movements.length > 0 ? navigationData.movements.slice().reverse().slice(0, 15).map((mov, i) => (
-                                            <tr key={i} className="hover:bg-[#F8F9FA] transition-colors"><td className="px-6 md:px-8 py-5"><p className="text-sm font-bold text-[#202124] whitespace-nowrap">{new Date(mov.timestamp).toLocaleDateString()} <span className="text-xs font-medium text-[#5F6368]">{new Date(mov.timestamp).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span></p><p className="text-[10px] uppercase font-bold text-[#5F6368] mt-0.5">{mov.usuario}</p></td><td className="px-6 md:px-8 py-5"><span className={`px-2.5 py-1.5 rounded-xl text-[10px] font-black inline-flex items-center gap-1 ${mov.tipo === 'IN' ? 'bg-green-100 text-green-700' : mov.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}><Icon name={mov.tipo === 'IN' ? 'add_circle' : mov.tipo === 'OUT' ? 'remove_circle' : 'tune'} size={14} fill /> {mov.tipo}</span></td><td className={`px-6 md:px-8 py-5 text-right text-sm font-bold ${parseFloat(mov.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{parseFloat(mov.diferencia) > 0 ? '+' : ''}{mov.diferencia}</td><td className="px-6 md:px-8 py-5 text-right text-sm font-black text-[#202124]">{mov.stock_nuevo}</td></tr>
-                                        )) : (<tr><td colSpan="4" className="px-6 md:px-8 py-12 text-center text-[#5F6368] text-sm font-medium">No se registran operaciones recientes para este artículo.</td></tr>)}</tbody>
-                                    </table></div>
-                                </div>
+                                        <div className="bg-white rounded-[40px] border border-[#E0E0E0] overflow-hidden fade-in-up" style={{ animationDelay: '100ms' }}>
+                                            <div className="p-6 md:p-8 border-b border-[#F1F3F4] flex items-center gap-3"><Icon name="history" className="text-[#1a73e8]" size={24} fill /><h4 className="text-xl font-bold tracking-tight text-[#202124]">Últimos Movimientos</h4></div>
+                                            <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left"><thead className="bg-[#F8F9FA] text-[#5F6368] text-[10px] font-bold uppercase tracking-widest"><tr><th className="px-6 md:px-8 py-5">Fecha/Usr</th><th className="px-6 md:px-8 py-5">Tipo</th><th className="px-6 md:px-8 py-5 text-right">Variación</th><th className="px-6 md:px-8 py-5 text-right">Saldo</th></tr></thead>
+                                                <tbody className="divide-y divide-[#F1F3F4]">{navigationData.movements.length > 0 ? navigationData.movements.slice().reverse().slice(0, 10).map((m, i) => (<tr key={i}><td className="px-6 md:px-8 py-5"><p className="text-sm font-bold text-[#202124] whitespace-nowrap">{new Date(m.timestamp).toLocaleDateString()}</p><p className="text-[10px] uppercase font-bold text-[#5F6368] mt-0.5">{m.usuario}</p></td><td className="px-6 md:px-8 py-5"><span className={`px-3 py-1.5 rounded-xl text-[10px] font-black inline-flex items-center gap-1 ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}><Icon name={m.tipo === 'IN' ? 'add_circle' : m.tipo === 'OUT' ? 'remove_circle' : 'tune'} size={14} fill /> {m.tipo}</span></td><td className={`px-6 md:px-8 py-5 text-right text-sm font-bold ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{parseFloat(m.diferencia) > 0 ? '+' : ''}{m.diferencia}</td><td className="px-6 md:px-8 py-5 text-right text-sm font-black text-[#202124]">{m.stock_nuevo}</td></tr>)) : (<tr><td colSpan="4" className="px-6 md:px-8 py-12 text-center text-[#5F6368] text-sm font-medium">No hay movimientos recientes.</td></tr>)}</tbody>
+                                            </table></div>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 md:gap-6">
+                                        {(navigationData.level === 'categories' || navigationData.level === 'subcategories') && navigationData.items.map((item, idx) => (
+                                            <div key={idx} onClick={() => { if (navigationData.level === 'categories') setNavPath({...navPath, category: item.name}); else setNavPath({...navPath, subcategory: item.name}); triggerHaptic(); }} className="gpu-accelerated bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] border border-[#E0E0E0] hover:border-blue-400 hover:shadow-xl transition-all cursor-pointer group nav-card fade-in-up" style={{ animationDelay: `${idx * 40}ms` }}>
+                                                <div className="flex justify-between items-start mb-6 md:mb-8">
+                                                    <div className={`w-16 h-16 md:w-20 md:h-20 rounded-[24px] md:rounded-[28px] flex items-center justify-center transition-transform group-hover:scale-110 ${item.out > 0 ? 'bg-red-50 text-red-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}>
+                                                        <Icon name={navigationData.level === 'categories' ? getItemIcon(item.name) : getItemIcon(navPath.category, item.name)} size={36} fill />
+                                                    </div>
+                                                    {item.out > 0 && <span className="bg-red-600 text-white px-3 py-1.5 rounded-xl text-[10px] font-black animate-pulse">Agotado</span>}
+                                                </div>
+                                                <h4 className="text-xl md:text-2xl font-bold mb-2 text-[#202124] leading-tight group-hover:text-blue-600 transition-colors">{item.name}</h4>
+                                                <p className="text-sm text-[#5F6368] font-medium">{item.count} ítems registrados</p>
+                                            </div>
+                                        ))}
+                                        
+                                        {(navigationData.level === 'items' || navigationData.level === 'search') && (
+                                            <div className="col-span-full grid grid-cols-1 gap-4">
+                                                {navigationData.items.length === 0 && <div className="text-center py-20 bg-white rounded-[40px] border border-[#E0E0E0] border-dashed"><div className="w-20 h-20 bg-[#F8F9FA] rounded-full flex items-center justify-center mx-auto mb-4 text-[#BDC1C6]"><Icon name="search_off" size={32} /></div><p className="font-bold text-[#5F6368]">No se encontraron resultados.</p></div>}
+                                                {navigationData.items.map((m, idx) => {
+                                                    const days = stats.getDaysLeft(m.id, m.stock);
+                                                    const isCritical = m.stock <= m.minimo && m.stock > 0;
+                                                    const isOutOfStock = (parseFloat(m.stock) || 0) <= 0;
+                                                    return (
+                                                        <div key={m.id} onClick={() => { handleItemClick(m); }} className={`gpu-accelerated bg-white p-5 md:p-6 rounded-[32px] md:rounded-[40px] border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all cursor-pointer hover:shadow-xl group nav-card fade-in-up ${isOutOfStock ? 'border-red-300 bg-red-50/10' : isCritical ? 'border-amber-300' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${idx * 40}ms` }}>
+                                                            <div className="flex items-center gap-5">
+                                                                <div className={`shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${isOutOfStock ? 'bg-red-600 text-white shadow-lg shadow-red-200' : isCritical ? 'bg-amber-100 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}>
+                                                                    <Icon name={getItemIcon(m.categoria, m.subcategoria, m.nombre)} size={32} fill />
+                                                                </div>
+                                                                <div>
+                                                                    <p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest mb-0.5 line-clamp-1">{m.subcategoria || 'General'}</p>
+                                                                    <h4 className={`text-lg md:text-xl font-bold tracking-tight line-clamp-1 ${isOutOfStock ? 'text-red-700' : 'text-[#202124]'}`}>{m.nombre}</h4>
+                                                                    <p className="text-[11px] text-[#1a73e8] font-bold mt-0.5 flex items-center gap-1">Ver ficha detallada <Icon name="arrow_forward" size={14} /></p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-6 px-2 border-t md:border-t-0 pt-4 md:pt-0 border-[#F1F3F4] justify-between md:justify-end w-full md:w-auto">
+                                                                <div className="text-left md:text-center"><p className="text-[9px] font-black text-[#5F6368] uppercase tracking-widest mb-1">Stock</p><div className="flex items-baseline gap-1"><span className={`text-2xl md:text-3xl font-black tracking-tighter ${isOutOfStock ? 'text-red-600' : isCritical ? 'text-amber-600' : 'text-[#202124]'}`}>{parseFloat(m.stock).toLocaleString()}</span><span className="text-[10px] font-bold text-[#5F6368] tracking-normal lowercase">{m.unidad}</span></div></div>
+                                                                <div className="text-right md:text-center"><p className="text-[9px] font-black text-[#5F6368] uppercase tracking-widest mb-1">Alcance</p><div className="flex items-baseline gap-1"><span className="text-xl md:text-2xl font-black text-[#1a73e8]">{days}</span><span className="text-[10px] font-bold text-[#5F6368] tracking-normal lowercase">días</span></div></div>
+                                                                <div className="hidden lg:flex gap-2 ml-4">
+                                                                    <button onClick={(e) => { e.stopPropagation(); setSelectedMaterial(m); setModalType('IN'); triggerHaptic(); }} className="action-button p-4 bg-blue-50 text-blue-600 rounded-2xl hover:bg-blue-600 hover:text-white transition-colors"><Icon name="add_circle" size={24} fill /></button>
+                                                                    <button disabled={isOutOfStock} onClick={(e) => { e.stopPropagation(); setSelectedMaterial(m); setModalType('OUT'); triggerHaptic(); }} className={`action-button p-4 rounded-2xl transition-colors ${isOutOfStock ? 'bg-gray-100 text-gray-300 cursor-not-allowed' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name="remove_circle" size={24} fill /></button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
 
-                        {/* 4. HISTORIAL GLOBAL (CON ORDENAMIENTO EN CABECERA) */}
+                        {/* VISTA HISTORIAL */}
                         {view === 'history' && (
                             <div className="bg-white rounded-[40px] border border-[#E0E0E0] overflow-hidden shadow-sm fade-in-up mt-4">
                                 <div className="p-6 md:p-8 border-b border-[#F1F3F4] flex flex-col md:flex-row md:items-center justify-between gap-4">
-                                    <div className="flex items-center gap-3"><Icon name="history" className="text-[#1a73e8]" size={28} fill /><h3 className="text-2xl font-bold tracking-tight text-[#202124]">Registro Histórico Global</h3></div>
+                                    <div className="flex items-center gap-3">
+                                        <Icon name="history" className="text-[#1a73e8]" size={28} fill />
+                                        <h3 className="text-2xl font-bold tracking-tight text-[#202124]">Historial Global</h3>
+                                    </div>
                                     <div className="flex items-center gap-2">
                                         <button onClick={() => setShowFilters(!showFilters)} className={`action-button px-4 py-2.5 rounded-2xl flex items-center gap-2 text-sm font-bold transition-colors ${showFilters ? 'bg-blue-50 text-blue-600' : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-[#E0E0E0]'}`}>
-                                            <Icon name="filter_list" size={20} /> Filtros de Búsqueda
+                                            <Icon name="filter_list" size={20} /> Filtros
                                         </button>
-                                        <button onClick={() => fetchData()} className="action-button p-2.5 bg-[#F8F9FA] text-[#5F6368] rounded-2xl hover:bg-[#E0E0E0]">
+                                        <button onClick={() => { fetchData(); triggerHaptic(); }} className="action-button p-2.5 bg-[#F8F9FA] text-[#5F6368] rounded-2xl hover:bg-[#E0E0E0]">
                                             <Icon name="sync" size={20} />
                                         </button>
                                     </div>
@@ -743,9 +801,9 @@
                                 {showFilters && (
                                     <div className="p-6 md:p-8 bg-[#F8F9FA] border-b border-[#F1F3F4] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 fade-in-up">
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Operador</label>
+                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Usuario</label>
                                             <select value={historyFilters.user} onChange={e => setHistoryFilters({...historyFilters, user: e.target.value})} className="w-full bg-white border border-[#E0E0E0] rounded-xl px-4 py-3 text-sm font-medium outline-none focus:border-[#1a73e8] transition-colors appearance-none cursor-pointer">
-                                                <option value="">Todos los operadores</option>
+                                                <option value="">Todos los usuarios</option>
                                                 {historyData.uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}
                                             </select>
                                         </div>
@@ -764,16 +822,16 @@
                                             </select>
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Fecha de Inicio</label>
+                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Desde Fecha</label>
                                             <input type="date" value={historyFilters.dateStart} onChange={e => setHistoryFilters({...historyFilters, dateStart: e.target.value})} className="w-full bg-white border border-[#E0E0E0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-[#1a73e8] transition-colors cursor-pointer" />
                                         </div>
                                         <div className="space-y-1.5">
-                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Fecha de Término</label>
+                                            <label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Hasta Fecha</label>
                                             <input type="date" value={historyFilters.dateEnd} onChange={e => setHistoryFilters({...historyFilters, dateEnd: e.target.value})} className="w-full bg-white border border-[#E0E0E0] rounded-xl px-4 py-2.5 text-sm font-medium outline-none focus:border-[#1a73e8] transition-colors cursor-pointer" />
                                         </div>
                                         <div className="sm:col-span-2 lg:col-span-1 flex justify-end items-end">
                                             <button onClick={() => { setHistoryFilters({ user: '', dateStart: '', dateEnd: '', category: '', subcategory: '', sort: 'date_desc' }); triggerHaptic(); }} className="text-red-600 hover:bg-red-50 px-5 py-3 rounded-xl text-xs font-bold transition-all uppercase tracking-wider w-full lg:w-auto">
-                                                Restablecer Parámetros
+                                                Limpiar Filtros
                                             </button>
                                         </div>
                                     </div>
@@ -785,23 +843,23 @@
                                             <tr>
                                                 <th className="px-6 md:px-8 py-4 cursor-pointer hover:bg-[#E8F0FE]/50 transition-colors group select-none" onClick={() => handleSort('date')}>
                                                     <div className={`flex items-center gap-1 ${historyFilters.sort.startsWith('date') ? 'text-[#1a73e8]' : ''}`}>
-                                                        Fecha / Operador
+                                                        Fecha / Usr
                                                         {historyFilters.sort === 'date_desc' ? <Icon name="arrow_downward" size={16} /> : historyFilters.sort === 'date_asc' ? <Icon name="arrow_upward" size={16} /> : <Icon name="swap_vert" size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" />}
                                                     </div>
                                                 </th>
                                                 <th className="px-6 md:px-8 py-4 cursor-pointer hover:bg-[#E8F0FE]/50 transition-colors group select-none" onClick={() => handleSort('tipo')}>
                                                     <div className={`flex items-center gap-1 ${historyFilters.sort.startsWith('tipo') ? 'text-[#1a73e8]' : ''}`}>
-                                                        Tipo de Operación
+                                                        Tipo
                                                         {historyFilters.sort === 'tipo_desc' ? <Icon name="arrow_downward" size={16} /> : historyFilters.sort === 'tipo_asc' ? <Icon name="arrow_upward" size={16} /> : <Icon name="swap_vert" size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" />}
                                                     </div>
                                                 </th>
                                                 <th className="px-6 md:px-8 py-4 cursor-pointer hover:bg-[#E8F0FE]/50 transition-colors group select-none" onClick={() => handleSort('mat')}>
                                                     <div className={`flex items-center gap-1 ${historyFilters.sort.startsWith('mat') ? 'text-[#1a73e8]' : ''}`}>
-                                                        Material Operado
+                                                        Material
                                                         {historyFilters.sort === 'mat_desc' ? <Icon name="arrow_downward" size={16} /> : historyFilters.sort === 'mat_asc' ? <Icon name="arrow_upward" size={16} /> : <Icon name="swap_vert" size={16} className="opacity-0 group-hover:opacity-50 transition-opacity" />}
                                                     </div>
                                                 </th>
-                                                <th className="px-6 md:px-8 py-4 text-right">Variación Neta / Balance Final</th>
+                                                <th className="px-6 md:px-8 py-4 text-right">Variación / Saldo</th>
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-[#F1F3F4]">
@@ -832,7 +890,7 @@
                                                 </tr>
                                             ))}
                                             {historyData.movs.length === 0 && (
-                                                <tr><td colSpan="4" className="px-6 py-12 text-center text-[#5F6368] text-sm font-medium">No se han encontrado operaciones que cumplan con los criterios de filtrado establecidos.</td></tr>
+                                                <tr><td colSpan="4" className="px-6 py-12 text-center text-[#5F6368] text-sm font-medium">No se encontraron movimientos con los filtros aplicados.</td></tr>
                                             )}
                                         </tbody>
                                     </table>
@@ -844,10 +902,10 @@
                         {view === 'reports' && (
                             <div className="space-y-6 fade-in-up pb-10">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-4 no-print">
-                                    <div><h2 className="text-3xl font-bold tracking-tight text-[#202124]">Informes y Auditoría</h2><p className="text-[#5F6368] font-medium mt-1">Módulo para la exportación de datos de inventario y los indicadores clave de rendimiento (KPIs).</p></div>
+                                    <div><h2 className="text-3xl font-bold tracking-tight text-[#202124]">Reportes y Auditoría</h2><p className="text-[#5F6368] font-medium mt-1">Exportación de datos de inventario.</p></div>
                                     <div className="flex flex-col sm:flex-row gap-4">
-                                        <button onClick={() => window.open('https://docs.google.com/spreadsheets/d/1oZiefz32aCVb0iBGnfQ5drzZKvk94HVCbWcgZleIKlg/edit', '_blank')} className="action-button flex justify-center items-center gap-2 px-8 py-4 bg-white border border-[#E0E0E0] text-[#1a73e8] rounded-full font-bold shadow-sm hover:bg-[#F8F9FA] text-base"><Icon name="open_in_new" size={20} /> Visualizar Base de Datos</button>
-                                        <button onClick={() => { triggerHaptic(); window.print(); }} className="action-button flex justify-center items-center gap-2 px-8 py-4 bg-[#1a73e8] text-white rounded-full font-bold shadow-xl shadow-blue-200 hover:bg-[#1557b0] text-base"><Icon name="print" size={20} /> Generar Documento PDF</button>
+                                        <button onClick={() => window.open('https://docs.google.com/spreadsheets/d/1oZiefz32aCVb0iBGnfQ5drzZKvk94HVCbWcgZleIKlg/edit', '_blank')} className="action-button flex justify-center items-center gap-2 px-8 py-4 bg-white border border-[#E0E0E0] text-[#1a73e8] rounded-full font-bold shadow-sm hover:bg-[#F8F9FA] text-base"><Icon name="open_in_new" size={20} /> Ver Google Sheets</button>
+                                        <button onClick={() => { triggerHaptic(); window.print(); }} className="action-button flex justify-center items-center gap-2 px-8 py-4 bg-[#1a73e8] text-white rounded-full font-bold shadow-xl shadow-blue-200 hover:bg-[#1557b0] text-base"><Icon name="print" size={20} /> Imprimir PDF</button>
                                     </div>
                                 </div>
 
@@ -860,30 +918,30 @@
                                             </div>
                                             <div>
                                                 <h1 className="text-4xl md:text-5xl font-black text-[#202124] tracking-tighter uppercase mb-1">Stock Control</h1>
-                                                <h2 className="text-sm md:text-base font-bold text-[#5F6368] uppercase tracking-widest">Informe Consolidado de Inventario - Kawas Tostaduría</h2>
+                                                <h2 className="text-sm md:text-base font-bold text-[#5F6368] uppercase tracking-widest">Reporte Consolidado Kawas Tostaduría</h2>
                                             </div>
                                         </div>
-                                        <div className="text-left md:text-right"><p className="text-sm font-bold text-[#202124]">FECHA: {new Date().toLocaleDateString()}</p><p className="text-xs font-medium text-[#5F6368] uppercase mt-1">Documento generado por: {user.nombre}</p></div>
+                                        <div className="text-left md:text-right"><p className="text-sm font-bold text-[#202124]">FECHA: {new Date().toLocaleDateString()}</p><p className="text-xs font-medium text-[#5F6368] uppercase mt-1">Generado por: {user.nombre}</p></div>
                                     </div>
 
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-10 md:mb-12">
-                                        <div className="p-6 bg-[#F8F9FA] rounded-[24px] border border-[#F1F3F4]"><p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest">Total de Artículos</p><p className="text-3xl font-black mt-2 text-[#202124]">{stats.totalItems}</p></div>
-                                        <div className="p-6 bg-[#E8F0FE] rounded-[24px] border border-blue-100"><p className="text-xs font-bold text-blue-700 uppercase tracking-widest">Índice de Disponibilidad General</p><p className="text-3xl font-black mt-2 text-blue-700">{Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%</p></div>
-                                        <div className="p-6 bg-amber-50 rounded-[24px] border border-amber-100"><p className="text-xs font-bold text-amber-700 uppercase tracking-widest">Nivel de Riesgo (Críticos)</p><p className="text-3xl font-black mt-2 text-amber-700">{stats.criticalItems}</p></div>
-                                        <div className="p-6 bg-red-50 rounded-[24px] border border-red-100"><p className="text-xs font-bold text-red-700 uppercase tracking-widest">Ruptura de Stock (Agotados)</p><p className="text-3xl font-black mt-2 text-red-700">{stats.outOfStock}</p></div>
+                                        <div className="p-6 bg-[#F8F9FA] rounded-[24px] border border-[#F1F3F4]"><p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest">Ítems Totales</p><p className="text-3xl font-black mt-2 text-[#202124]">{stats.totalItems}</p></div>
+                                        <div className="p-6 bg-[#E8F0FE] rounded-[24px] border border-blue-100"><p className="text-xs font-bold text-blue-700 uppercase tracking-widest">Disponibilidad</p><p className="text-3xl font-black mt-2 text-blue-700">{Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%</p></div>
+                                        <div className="p-6 bg-amber-50 rounded-[24px] border border-amber-100"><p className="text-xs font-bold text-amber-700 uppercase tracking-widest">Nivel Crítico</p><p className="text-3xl font-black mt-2 text-amber-700">{stats.criticalItems}</p></div>
+                                        <div className="p-6 bg-red-50 rounded-[24px] border border-red-100"><p className="text-xs font-bold text-red-700 uppercase tracking-widest">Agotados</p><p className="text-3xl font-black mt-2 text-red-700">{stats.outOfStock}</p></div>
                                     </div>
 
                                     <div className="mb-12 avoid-break">
-                                        <div className="flex items-center gap-3 mb-6"><Icon name="pie_chart" className="text-[#202124]" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Indicadores Clave por Categoría</h3></div>
+                                        <div className="flex items-center gap-3 mb-6"><Icon name="pie_chart" className="text-[#202124]" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Métricas por Categoría</h3></div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-left print-table border-collapse border border-[#E0E0E0]">
                                                 <thead className="bg-[#F8F9FA]">
                                                     <tr>
-                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0]">Categoría de Producto</th>
-                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Artículos Registrados</th>
-                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Nivel de Riesgo (Críticos)</th>
-                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Ruptura de Stock (Agotados)</th>
-                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-right">Índice de Salud</th>
+                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0]">Categoría</th>
+                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Ítems Registrados</th>
+                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">En Riesgo (Críticos)</th>
+                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Quiebre (Agotados)</th>
+                                                        <th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-right">Salud General</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
@@ -920,22 +978,22 @@
                                     {/* NOTA VISUAL EN PANTALLA (NO SE IMPRIME) */}
                                     <div className="text-center p-6 bg-blue-50 border border-blue-100 text-blue-700 rounded-3xl mt-8 font-medium text-sm no-print flex flex-col items-center gap-2">
                                         <Icon name="picture_as_pdf" size={28} />
-                                        <p>El desglose exhaustivo del inventario, incluyendo los materiales que presentan un estado crítico, se incorporará automáticamente a este documento durante la generación del archivo PDF.</p>
+                                        <p>El detalle completo del inventario y los materiales críticos se adjuntará automáticamente en este documento al generar el PDF.</p>
                                     </div>
 
                                     {(stats.outOfStock > 0 || stats.criticalItems > 0) && (
                                         <div className="mb-12 avoid-break hidden print:block">
-                                            <div className="flex items-center gap-3 mb-6"><Icon name="error" className="text-red-600" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Atención Operativa Requerida</h3></div>
-                                            <div className="overflow-x-auto"><table className="w-full text-left print-table border-collapse border border-[#E0E0E0]"><thead className="bg-[#F8F9FA]"><tr><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0]">Material Identificado</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Existencias Restantes</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Nivel de Seguridad</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Estado de Operación</th></tr></thead>
+                                            <div className="flex items-center gap-3 mb-6"><Icon name="error" className="text-red-600" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Atención Requerida</h3></div>
+                                            <div className="overflow-x-auto"><table className="w-full text-left print-table border-collapse border border-[#E0E0E0]"><thead className="bg-[#F8F9FA]"><tr><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0]">Material</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Stock</th><th className="px-5 py-4 text-xs font-bold text-[#5F6368] uppercase tracking-widest border-b border-[#E0E0E0] text-center">Estado</th></tr></thead>
                                                 <tbody>{[...stats.outOfStockList, ...stats.criticalList].map((m, i) => (
-                                                    <tr key={i} className="border-b border-[#F1F3F4]"><td className="px-5 py-4"><p className="font-bold text-sm md:text-base text-[#202124]">{m.nombre}</p><p className="text-[10px] font-medium text-[#5F6368] mt-1">Código de Ref: {m.id} • {m.categoria}</p></td><td className="px-5 py-4 text-center font-black text-base">{parseFloat(m.stock).toLocaleString()}</td><td className="px-5 py-4 text-center text-gray-500 font-bold">{m.minimo}</td><td className="px-5 py-4 text-center text-[10px] font-black uppercase">{parseFloat(m.stock) <= 0 ? <span className="print-badge-red px-2 py-1 rounded">Sin Existencias</span> : <span className="print-badge-amber px-2 py-1 rounded">Nivel Crítico</span>}</td></tr>
+                                                    <tr key={i} className="border-b border-[#F1F3F4]"><td className="px-5 py-4"><p className="font-bold text-sm md:text-base text-[#202124]">{m.nombre}</p><p className="text-[10px] font-medium text-[#5F6368] mt-1">ID: {m.id} • {m.categoria}</p></td><td className="px-5 py-4 text-center font-black text-base">{parseFloat(m.stock).toLocaleString()}</td><td className="px-5 py-4 text-center">{parseFloat(m.stock) <= 0 ? <span className="print-badge-red bg-red-100 text-red-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Agotado</span> : <span className="print-badge-amber bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase">Crítico</span>}</td></tr>
                                                 ))}</tbody>
                                             </table></div>
                                         </div>
                                     )}
 
                                     <div className="page-break hidden print:block">
-                                        <div className="flex items-center gap-3 mb-8 border-b-2 border-[#202124] pb-4"><Icon name="inventory_2" className="text-[#202124]" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Inventario General Consolidado</h3></div>
+                                        <div className="flex items-center gap-3 mb-8 border-b-2 border-[#202124] pb-4"><Icon name="inventory_2" className="text-[#202124]" fill /><h3 className="text-xl md:text-2xl font-bold uppercase tracking-tight text-[#202124]">Inventario Completo</h3></div>
                                         {Object.keys(stats.groupedInventory).sort().map((categoria, idx) => (
                                             <div key={idx} className="mb-12 avoid-break">
                                                 <h4 className="text-base font-bold text-white bg-[#1a73e8] uppercase mb-4 px-4 py-2 rounded-xl flex items-center gap-2 w-max">
@@ -944,14 +1002,14 @@
                                                 {Object.keys(stats.groupedInventory[categoria]).sort().map((subcategoria, sIdx) => (
                                                     <div key={sIdx} className="mb-8 ml-3 md:ml-6 border-l-2 border-[#E0E0E0] pl-4 md:pl-6">
                                                         <h5 className="text-xs md:text-sm font-bold text-[#5F6368] uppercase tracking-widest mb-4">{subcategoria}</h5>
-                                                        <div className="overflow-x-auto"><table className="w-full text-left print-table border-collapse"><thead className="bg-[#F8F9FA] border-y border-[#E0E0E0]"><tr><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest w-1/2">Descripción del Material</th><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest text-center hidden md:table-cell">Inventario Mínimo</th><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest text-center">Existencias Actuales</th><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest text-center hidden sm:table-cell">Estado Operativo</th></tr></thead>
+                                                        <div className="overflow-x-auto"><table className="w-full text-left print-table border-collapse"><thead className="bg-[#F8F9FA] border-y border-[#E0E0E0]"><tr><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest w-1/2">Material</th><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest text-center hidden md:table-cell">Min</th><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest text-center">Stock</th><th className="px-4 py-3 text-[10px] font-bold text-[#5F6368] uppercase tracking-widest text-center hidden sm:table-cell">Status</th></tr></thead>
                                                             <tbody className="divide-y divide-[#F1F3F4]">
                                                                 {stats.groupedInventory[categoria][subcategoria].map((item, iIdx) => {
                                                                     const stock = parseFloat(item.stock) || 0; const min = parseFloat(item.minimo) || 0;
-                                                                    const status = stock <= 0 ? 'SIN EXISTENCIAS' : stock <= min ? 'NIVEL CRÍTICO' : 'NIVEL ÓPTIMO';
+                                                                    const status = stock <= 0 ? 'AGOTADO' : stock <= min ? 'CRÍTICO' : 'OK';
                                                                     const statusClass = stock <= 0 ? 'text-red-600 font-black' : stock <= min ? 'text-amber-600 font-bold' : 'text-green-600 font-medium';
                                                                     return (
-                                                                        <tr key={iIdx}><td className="px-4 py-3"><span className="text-xs md:text-sm font-bold text-[#202124] block">{item.nombre}</span><span className="text-[9px] font-medium text-[#5F6368] mt-0.5">Código de Ref: {item.id}</span></td><td className="px-4 py-3 text-center text-xs text-[#5F6368] hidden md:table-cell">{min}</td><td className="px-4 py-3 text-center text-sm font-black text-[#202124]">{stock.toLocaleString()} <span className="text-[9px] font-bold text-[#5F6368]">{item.unidad}</span></td><td className={`px-4 py-3 text-center text-[10px] hidden sm:table-cell ${statusClass}`}>{status}</td></tr>
+                                                                        <tr key={iIdx}><td className="px-4 py-3"><span className="text-xs md:text-sm font-bold text-[#202124] block">{item.nombre}</span><span className="text-[9px] font-medium text-[#5F6368] mt-0.5">Ref: {item.id}</span></td><td className="px-4 py-3 text-center text-xs text-[#5F6368] hidden md:table-cell">{min}</td><td className="px-4 py-3 text-center text-sm font-black text-[#202124]">{stock.toLocaleString()} <span className="text-[9px] font-bold text-[#5F6368]">{item.unidad}</span></td><td className={`px-4 py-3 text-center text-[10px] hidden sm:table-cell ${statusClass}`}>{status}</td></tr>
                                                                     )
                                                                 })}
                                                             </tbody>
@@ -966,8 +1024,8 @@
                         )}
                     </main>
 
-                    {/* BARRA NAVEGACIÓN INFERIOR (Móvil) */}
-                    <nav className="no-print lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#E0E0E0] px-2 py-3 pb-8 z-40 flex justify-around items-center rounded-t-[32px] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] gpu-accelerated">
+                    {/* BOTTOM NAV MÓVIL */}
+                    <nav className="no-print lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#E0E0E0] px-2 py-3 pb-8 z-40 flex justify-between items-center rounded-t-[32px] shadow-[0_-10px_30px_rgba(0,0,0,0.05)] gpu-accelerated">
                         {navItems.map(item => (
                             <button key={item.id} onClick={() => { setView(item.id); resetNav(); setSearchTerm(''); triggerHaptic(); }} className={`flex flex-col items-center gap-1.5 p-1 flex-1 transition-transform active:scale-90 ${view === item.id ? 'text-[#1a73e8]' : 'text-[#BDC1C6]'}`}>
                                 <div className={`p-2.5 px-4 rounded-[20px] transition-colors ${view === item.id ? 'bg-[#E8F0FE]' : ''}`}>
@@ -982,29 +1040,27 @@
                             <div className={`p-2.5 px-4 rounded-[20px] transition-colors ${isSyncing ? 'bg-[#E8F0FE]' : 'bg-[#F1F3F4]'}`}>
                                 <Icon name="sync" size={24} spin={isSyncing} />
                             </div>
-                            <span className="text-[9px] font-black uppercase tracking-widest">Sincronizar</span>
+                            <span className="text-[9px] font-black uppercase tracking-widest">Sync</span>
                         </button>
                     </nav>
 
-                    {/* MODAL UNIVERSAL DE TRANSACCIONES */}
-                    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-opacity duration-200 ${modalType ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                    {/* MODAL DE TRANSACCIONES */}
+                    <div className={`fixed inset-0 z-[100] flex items-center justify-center p-6 transition-opacity duration-200 ${modalType ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                         <div className="absolute inset-0 bg-[#202124]/40 backdrop-blur-md" onClick={() => !isSaving && setModalType(null)}></div>
                         <div className={`bg-white w-full max-w-sm rounded-[40px] shadow-2xl z-10 overflow-hidden gpu-accelerated transition-transform duration-300 ${modalType ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
                             <div className={`p-8 text-white ${modalType === 'IN' ? 'bg-green-600' : modalType === 'OUT' ? 'bg-red-600' : 'bg-gray-800'}`}>
                                 <div className="flex justify-between items-start">
-                                    <div><p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Confirmar Registro de {modalType}</p><h3 className="text-2xl font-bold tracking-tight uppercase leading-tight">{selectedMaterial?.nombre}</h3></div>
-                                    <div className="p-3 bg-white/20 rounded-2xl"><Icon name={modalType === 'IN' ? 'add_circle' : modalType === 'OUT' ? 'remove_circle' : 'tune'} size={32} fill /></div>
+                                    <div><p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Registrar {modalType}</p><h3 className="text-2xl font-bold leading-tight">{selectedMaterial?.nombre}</h3></div>
+                                    <div className="p-3 bg-white/20 rounded-2xl">
+                                        <Icon name={modalType === 'IN' ? 'add_circle' : modalType === 'OUT' ? 'remove_circle' : 'tune'} size={32} fill />
+                                    </div>
                                 </div>
                             </div>
                             <form className="p-8 space-y-6" onSubmit={handleTransaction}>
-                                <div className="space-y-1.5"><label className="text-xs font-black text-[#5F6368] uppercase ml-1">Cantidad a Registrar ({selectedMaterial?.unidad})</label><input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-[24px] text-2xl font-black outline-none border-2 border-transparent focus:border-blue-200 transition-all text-[#202124]" placeholder="0.00" autoFocus /></div>
-                                <div className="space-y-1.5"><label className="text-xs font-black text-[#5F6368] uppercase ml-1">Observaciones (Opcional)</label><input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-[20px] text-sm font-medium outline-none border-2 border-transparent focus:border-blue-200 transition-all text-[#202124]" placeholder="Indique observaciones relevantes..." /></div>
-                                <div className="flex gap-4 pt-4">
-                                    <button type="button" disabled={isSaving} onClick={() => setModalType(null)} className="action-button flex-1 py-4 font-bold text-[#5F6368] bg-[#F8F9FA] hover:bg-[#E0E0E0] rounded-[20px] transition-colors">Cancelar Operación</button>
-                                    <button disabled={isSaving} className="action-button flex-[2] py-4 bg-[#1a73e8] text-white rounded-[24px] font-bold shadow-xl shadow-blue-100 hover:bg-[#1557b0] transition-colors flex items-center justify-center gap-2">{isSaving ? <Icon name="sync" size={20} spin /> : 'Confirmar Operación'}</button>
-                                </div>
+                                <div className="space-y-2"><label className="text-xs font-bold text-[#5F6368] uppercase ml-1">Cantidad ({selectedMaterial?.unidad})</label><input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-3xl outline-none text-2xl font-black text-[#202124] focus:ring-4 focus:ring-blue-100 transition-all" placeholder="0" autoFocus /></div>
+                                <div className="space-y-2"><label className="text-xs font-bold text-[#5F6368] uppercase ml-1">Comentario</label><input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-2xl outline-none text-sm font-medium text-[#202124] focus:ring-4 focus:ring-blue-100 transition-all" placeholder="Ej: Nueva recepción" /></div>
+                                <div className="flex gap-4 pt-4"><button type="button" disabled={isSaving} onClick={() => setModalType(null)} className="action-button flex-1 py-4 font-bold text-[#5F6368] bg-[#F8F9FA] hover:bg-[#E0E0E0] rounded-2xl transition-colors">Cancelar</button><button disabled={isSaving} className="action-button flex-[2] py-4 bg-[#1a73e8] text-white rounded-3xl font-bold shadow-xl shadow-blue-100 flex items-center justify-center gap-2 hover:bg-[#1557b0] transition-colors">{isSaving ? <Icon name="sync" size={20} spin /> : 'Confirmar'}</button></div>
                             </form>
-                            {syncError && <div className="px-8 pb-4 text-[10px] font-bold text-red-500 text-center">{syncError}</div>}
                         </div>
                     </div>
                 </div>
