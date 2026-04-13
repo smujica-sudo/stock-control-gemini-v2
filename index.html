@@ -452,7 +452,7 @@
             const navItems = [
                 { id: 'dashboard', label: 'Inicio', icon: 'space_dashboard' },
                 { id: 'inventory', label: 'Bodega', icon: 'inventory_2' },
-                { id: 'history', label: 'Bitácora', icon: 'history' },
+                { id: 'history', label: 'Historial', icon: 'history' },
                 { id: 'reports', label: 'Reportes', icon: 'analytics' },
             ];
 
@@ -662,7 +662,7 @@
                                     {!searchTerm && (
                                         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-3 mt-2">
                                             <button onClick={() => { resetNav(); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1 ${!navPath.category ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}>
-                                                <Icon name="inventory_2" size={16} fill={!navPath.category} /> Bodega
+                                                <Icon name="search" size={16} fill={!navPath.category} /> Buscador
                                             </button>
                                             {navPath.category && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, subcategory:null, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1.5 ${navPath.category && !navPath.subcategory ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category)} size={16} fill={navPath.category && !navPath.subcategory} /> {navPath.category}</button></>}
                                             {navPath.subcategory && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1.5 ${navPath.category && navPath.subcategory && !navPath.itemId ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category, navPath.subcategory)} size={16} fill={navPath.category && navPath.subcategory && !navPath.itemId} /> {navPath.subcategory}</button></>}
@@ -784,7 +784,7 @@
                                 <div className="p-6 md:p-8 border-b border-[#F1F3F4] flex flex-col md:flex-row md:items-center justify-between gap-4">
                                     <div className="flex items-center gap-3">
                                         <Icon name="history" className="text-[#1a73e8]" size={28} fill />
-                                        <h3 className="text-2xl font-bold tracking-tight text-[#202124]">Bitácora Global</h3>
+                                        <h3 className="text-2xl font-bold tracking-tight text-[#202124]">Historial Global</h3>
                                     </div>
                                     <div className="flex items-center gap-2">
                                         <button onClick={() => setShowFilters(!showFilters)} className={`action-button px-4 py-2.5 rounded-2xl flex items-center gap-2 text-sm font-bold transition-colors ${showFilters ? 'bg-blue-50 text-blue-600' : 'bg-[#F8F9FA] text-[#5F6368] hover:bg-[#E0E0E0]'}`}>
