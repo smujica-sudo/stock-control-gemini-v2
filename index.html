@@ -483,7 +483,7 @@
                             ))}
                         </nav>
                         
-                        <div className="px-4 pb-6 mt-auto">
+                        <div className="px-4 pb-6 mt-auto space-y-3">
                             <button 
                                 onClick={() => { fetchData(); triggerHaptic(); }} 
                                 disabled={isSyncing}
@@ -491,6 +491,13 @@
                             >
                                 <Icon name="sync" size={20} spin={isSyncing} /> 
                                 <span className="text-sm">Sincronizar</span>
+                            </button>
+                            <button 
+                                onClick={handleLogout} 
+                                className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl transition-all border border-transparent shadow-sm font-bold active:scale-95 bg-red-50 text-red-600 hover:bg-red-100"
+                            >
+                                <Icon name="logout" size={20} fill /> 
+                                <span className="text-sm">Cerrar Sesión</span>
                             </button>
                         </div>
 
