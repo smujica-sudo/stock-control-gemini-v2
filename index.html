@@ -342,6 +342,14 @@
 
             const resetNav = useCallback(() => setNavPath({ category: null, subcategory: null, itemId: null }), []);
             
+            // --- LÓGICA DE CERRAR SESIÓN ---
+            const handleLogout = useCallback(() => {
+                setUser(null);
+                setPin('');
+                setView('login');
+                triggerHaptic();
+            }, [triggerHaptic]);
+
             // --- LÓGICA DE FILTROS Y ORDENAMIENTO (BITÁCORA) ---
             const historyData = useMemo(() => {
                 let movs = [...(data.movimientos || [])];
