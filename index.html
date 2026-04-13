@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kawas Tostaduría - Sistema de Gestión de Inventario</title>
+    <title>Kawas Coffee - Control de Stock</title>
     
     <!-- ☕ FAVICON VECTORIAL -->
     <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%231a73e8'/%3E%3Ctext x='50' y='75' font-family='Arial, sans-serif' font-size='72' font-weight='bold' fill='%23ffffff' text-anchor='middle'%3EK%3C/text%3E%3C/svg%3E" />
@@ -13,7 +13,7 @@
         window.addEventListener('error', function(event) {
             var root = document.getElementById('root');
             if(root) {
-                root.innerHTML = '<div style="padding:30px; font-family:sans-serif; color:#d93025; background:#fce8e6; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;"><h2>⚠️ Excepción del Sistema</h2><p>Ocurrió un problema procesando los datos.</p><p style="font-size:11px; margin-top:10px; color:#5F6368;">' + event.message + '</p><button onclick="window.location.reload()" style="margin-top:25px; padding:12px 24px; background:#d93025; color:white; border:none; border-radius:24px; font-weight:bold; cursor:pointer;">Reiniciar Aplicación</button></div>';
+                root.innerHTML = '<div style="padding:30px; font-family:sans-serif; color:#d93025; background:#fce8e6; height:100vh; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center;"><h2>⚠️ Error de Sistema</h2><p>Ocurrió un problema procesando los datos.</p><p style="font-size:11px; margin-top:10px; color:#5F6368;">' + event.message + '</p><button onclick="window.location.reload()" style="margin-top:25px; padding:12px 24px; background:#d93025; color:white; border:none; border-radius:24px; font-weight:bold; cursor:pointer;">Recargar Aplicación</button></div>';
             }
         });
     </script>
@@ -26,11 +26,11 @@
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
     
-    <!-- Google Material Symbols (Finos como en la v2.2) -->
+    <!-- Google Material Symbols (Rounded & Fill Support) -->
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
         
         body {
             font-family: 'Inter', sans-serif;
@@ -41,6 +41,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* Tipografía de Íconos Google v2.2 */
         .material-symbols-rounded {
             font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
             display: inline-block;
@@ -48,7 +49,6 @@
             white-space: nowrap;
             direction: ltr;
             -webkit-font-smoothing: antialiased;
-            transition: all 0.3s ease;
         }
 
         .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -59,20 +59,33 @@
         .nav-card:active { transform: scale(0.96); transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1); }
         .action-button:active { transform: scale(0.88); transition: transform 0.1s cubic-bezier(0.2, 0, 0, 1); }
         
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .animate-spin-custom { animation: spin 1s linear infinite; }
+        
         @keyframes fadeInUp { from { opacity: 0; transform: translate3d(0, 15px, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
         .fade-in-up { animation: fadeInUp 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; opacity: 0; }
 
+        /* ESTILOS DE IMPRESIÓN */
         @media print {
             @page { margin: 10mm; size: auto; }
             body { background-color: white !important; }
             .no-print, aside, header, nav, .action-button, .search-bar { display: none !important; }
             main { margin: 0 !important; padding: 0 !important; }
             .report-container { box-shadow: none !important; border: none !important; border-radius: 0 !important; padding: 0 !important; }
+            .page-break { page-break-before: always; }
+            .avoid-break { page-break-inside: avoid; }
+            .print-badge-red { background-color: #fce8e6 !important; color: #d93025 !important; border: 1px solid #d93025; }
+            .print-badge-amber { background-color: #fef7e0 !important; color: #e37400 !important; border: 1px solid #e37400; }
         }
     </style>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="root">
+        <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:#1a73e8;font-family:sans-serif;">
+            <div style="width:44px;height:44px;border:4px solid #E8F0FE;border-top:4px solid #1a73e8;border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+            <p style="margin-top:20px;font-weight:700;font-size:1.1rem;letter-spacing:-0.5px;">Estableciendo conexión...</p>
+        </div>
+    </div>
 
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useDeferredValue, memo } = React;
@@ -80,10 +93,11 @@
         const MASTER_PIN = "9988"; 
         const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbye0BCOskWfd-jep9i605zmPGM0VLS3XYphKeHiYkKOSAWK8Jzwx0U7LnCLeVqJgjqohg/exec";
 
+        // --- COMPONENTE ICONO ---
         const Icon = memo(({ name, size = 24, className = "", spin = false, fill = false }) => {
             return (
                 <span 
-                    className={`material-symbols-rounded ${className} ${spin ? 'animate-spin' : ''} gpu-accelerated select-none`}
+                    className={`material-symbols-rounded ${className} ${spin ? 'animate-spin-custom' : ''} gpu-accelerated select-none`}
                     style={{ 
                         fontSize: size, 
                         fontVariationSettings: `'FILL' ${fill ? 1 : 0}, 'wght' 300, 'GRAD' 0, 'opsz' 24` 
@@ -94,18 +108,23 @@
             );
         });
 
+        // --- INTELIGENCIA DE ÍCONOS ---
         const getItemIcon = (categoria = '', subcategoria = '', nombre = '') => {
             const text = `${categoria} ${subcategoria} ${nombre}`.toLowerCase();
             if (text.includes('vaso') || text.includes('copa') || text.includes('mug') || text.includes('taza') || text.includes('botella')) return 'local_drink';
-            if (text.includes('tapa') || text.includes('bombilla') || text.includes('pajilla') || text.includes('fajilla') || text.includes('manga') || text.includes('revolvedor') || text.includes('servilleta')) return 'takeout_dining';
+            if (text.includes('tapa') || text.includes('bombilla') || text.includes('pajilla') || text.includes('fajilla') || text.includes('manga') || text.includes('revolvedor') || text.includes('servilleta') || text.includes('porta')) return 'takeout_dining';
             if (text.includes('bolsa')) return 'shopping_bag';
-            if (text.includes('caja') || text.includes('carton') || text.includes('cartón') || text.includes('empaque')) return 'inventory_2';
-            if (text.includes('equipo') || text.includes('maquina') || text.includes('repuesto') || text.includes('filtro') || text.includes('tostadora')) return 'handyman';
-            if (text.includes('limpieza') || text.includes('aseo') || text.includes('detergente') || text.includes('jabon') || text.includes('jabón')) return 'sanitizer';
-            if (text.includes('café') || text.includes('cafe') || text.includes('grano') || text.includes('espresso') || text.includes('verde')) return 'coffee';
-            if (text.includes('leche') || text.includes('avena') || text.includes('lácteo')) return 'water_drop';
+            if (text.includes('caja') || text.includes('carton') || text.includes('cartón') || text.includes('empaque') || text.includes('packaging')) return 'inventory_2';
+            if (text.includes('equipo') || text.includes('maquina') || text.includes('repuesto') || text.includes('filtro') || text.includes('herramienta') || text.includes('mantenimiento') || text.includes('tostadora')) return 'handyman';
+            if (text.includes('limpieza') || text.includes('aseo') || text.includes('cloro') || text.includes('detergente') || text.includes('jabon') || text.includes('jabón') || text.includes('sanitizante')) return 'sanitizer';
+            if (text.includes('merchandising') || text.includes('ropa') || text.includes('polera')) return 'checkroom';
+            if (text.includes('café') || text.includes('cafe') || text.includes('grano') || text.includes('espresso')) return 'coffee';
             if (text.includes('té') || text.includes('matcha') || text.includes('chai')) return 'emoji_food_beverage';
-            if (text.includes('azucar') || text.includes('azúcar') || text.includes('endulzante') || text.includes('polvo')) return 'grain';
+            if (text.includes('leche') || text.includes('avena') || text.includes('lácteo')) return 'water_drop';
+            if (text.includes('sirope') || text.includes('jarabe') || text.includes('puré')) return 'liquor';
+            if (text.includes('hielo') || text.includes('cold') || text.includes('frappe')) return 'ac_unit';
+            if (text.includes('azucar') || text.includes('azúcar') || text.includes('stevia') || text.includes('polvo')) return 'grain';
+            if (text.includes('pasteleria') || text.includes('galleta') || text.includes('pan') || text.includes('sandwich')) return 'bakery_dining';
             return 'package_2'; 
         };
 
@@ -115,18 +134,22 @@
             const [pin, setPin] = useState('');
             const [data, setData] = useState({ materiales: [], movimientos: [], usuarios: [] });
             const [loginInfo, setLoginInfo] = useState(null);
+            
             const [searchTerm, setSearchTerm] = useState('');
             const deferredSearchTerm = useDeferredValue(searchTerm); 
+            
             const [isSyncing, setIsSyncing] = useState(false);
             const [isSaving, setIsSaving] = useState(false);
             const [syncError, setSyncError] = useState(null);
+            
             const [modalType, setModalType] = useState(null); 
             const [selectedMaterial, setSelectedMaterial] = useState(null);
             const [navPath, setNavPath] = useState({ category: null, subcategory: null, itemId: null });
+
             const [historyFilters, setHistoryFilters] = useState({ user: '', dateStart: '', dateEnd: '', category: '', subcategory: '', sort: 'date_desc' });
             const [showFilters, setShowFilters] = useState(false);
 
-            // Auto-scroll al tope
+            // --- AUTO-SCROLL FIX ---
             useEffect(() => {
                 if (view !== 'login') window.scrollTo(0, 0);
             }, [view, navPath]);
@@ -143,25 +166,21 @@
                     const text = await response.text();
                     const json = JSON.parse(text);
                     if (json && json.materiales) setData(json);
-                } catch (e) { setSyncError("Error de sincronización."); }
+                } catch (e) { setSyncError(e.message); }
                 finally { setIsSyncing(false); }
             }, []);
 
             useEffect(() => { fetchData(); }, [fetchData]);
 
-            // --- FUNCIÓN CRÍTICA handleLogout ---
+            // --- LOGOUT ---
             const handleLogout = useCallback(() => {
-                setUser(null);
-                setPin('');
-                setLoginInfo(null);
-                setView('login');
-                triggerHaptic();
+                setUser(null); setPin(''); setLoginInfo(null); setView('login'); triggerHaptic();
             }, [triggerHaptic]);
 
+            // --- LOGIN ---
             const attemptLogin = useCallback((currentPin) => {
                 if (data.materiales.length === 0) return; 
-                const validUser = (data.usuarios || []).find(u => u.pin == currentPin) || 
-                                 (currentPin === MASTER_PIN ? { nombre: "Administrador del Sistema", rol: "Acceso Privilegiado" } : null);
+                const validUser = (data.usuarios || []).find(u => u.pin == currentPin) || (currentPin === MASTER_PIN ? { nombre: "Admin Principal", rol: "Administrador" } : null);
                 if (validUser) {
                     setUser(validUser);
                     setLoginInfo({
@@ -177,15 +196,20 @@
                 }
             }, [data, triggerHaptic]);
 
-            useEffect(() => {
-                if (pin.length === 4) attemptLogin(pin);
-            }, [pin, attemptLogin]);
+            useEffect(() => { if (pin.length === 4) attemptLogin(pin); }, [pin, attemptLogin]);
 
             const handlePinChange = (e) => {
                 const val = e.target.value.replace(/[^0-9]/g, '');
                 setPin(val);
             };
 
+            const handleItemClick = useCallback((item) => {
+                setNavPath({ category: item.categoria, subcategory: item.subcategoria || 'General', itemId: item.id });
+                setSearchTerm(''); 
+                triggerHaptic();
+            }, [triggerHaptic]);
+
+            // --- TRANSACCIONES ---
             const handleTransaction = async (e) => {
                 e.preventDefault();
                 const qty = parseFloat(e.target.cantidad.value);
@@ -214,6 +238,7 @@
                 finally { setIsSaving(false); }
             };
 
+            // --- KPI Y ANALITICA ---
             const stats = useMemo(() => {
                 const materiales = data.materiales || [];
                 const movimientos = data.movimientos || [];
@@ -228,6 +253,14 @@
                     return totalConsumed <= 0 ? '---' : Math.round(parseFloat(currentStock) / (totalConsumed / 7));
                 };
 
+                const groupedInventory = {};
+                materiales.forEach(m => {
+                    const cat = m.categoria || 'Sin Categoría'; const subcat = m.subcategoria || 'General';
+                    if(!groupedInventory[cat]) groupedInventory[cat] = {};
+                    if(!groupedInventory[cat][subcat]) groupedInventory[cat][subcat] = [];
+                    groupedInventory[cat][subcat].push(m);
+                });
+
                 const categoryStats = [...new Set(materiales.map(m => m.categoria || 'Sin Categoría'))].map(cat => {
                     const items = materiales.filter(m => (m.categoria || 'Sin Categoría') === cat);
                     return {
@@ -237,14 +270,8 @@
                     };
                 }).sort((a, b) => b.total - a.total);
 
-                return { totalItems, criticalItems: criticalList.length, criticalList, outOfStock: outOfStockList.length, outOfStockList, getDaysLeft, categoryStats };
+                return { totalItems, criticalItems: criticalList.length, criticalList, outOfStock: outOfStockList.length, outOfStockList, getDaysLeft, groupedInventory, categoryStats };
             }, [data]);
-
-            const handleItemClick = useCallback((item) => {
-                setNavPath({ category: item.categoria, subcategory: item.subcategoria || 'General', itemId: item.id });
-                setSearchTerm(''); 
-                triggerHaptic();
-            }, [triggerHaptic]);
 
             const navigationData = useMemo(() => {
                 const materiales = data.materiales || [];
@@ -277,8 +304,6 @@
                 if (historyFilters.user) movs = movs.filter(m => m.usuario === historyFilters.user);
                 if (historyFilters.category) movs = movs.filter(m => m.categoria_real === historyFilters.category);
                 if (historyFilters.subcategory) movs = movs.filter(m => m.subcategoria === historyFilters.subcategory);
-                if (historyFilters.dateStart) movs = movs.filter(m => new Date(m.timestamp) >= new Date(historyFilters.dateStart + "T00:00:00"));
-                if (historyFilters.dateEnd) movs = movs.filter(m => new Date(m.timestamp) <= new Date(historyFilters.dateEnd + "T23:59:59"));
                 movs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
                 const uniqueUsers = [...new Set([...(data.usuarios || []).map(u => u.nombre), ...(data.movimientos || []).map(m => m.usuario)].filter(Boolean))].sort();
                 const uniqueCategories = [...new Set((data.materiales || []).map(m => m.categoria).filter(Boolean))];
@@ -298,12 +323,12 @@
                         <div className="w-full max-w-sm bg-white rounded-[40px] p-10 shadow-xl border border-[#E0E0E0] text-center gpu-accelerated fade-in-up">
                             <div className="w-20 h-20 mx-auto mb-8 flex items-center justify-center">
                                 <img src="./logo.png" alt="K" className="w-full h-full object-contain" onError={(e) => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
-                                <div style={{display: 'none'}} className="w-20 h-20 bg-[#1a73e8] rounded-3xl flex-col items-center justify-center text-white shadow-lg"><span className="text-5xl font-black leading-none font-sans">K</span></div>
+                                <div style={{display: 'none'}} className="w-20 h-20 bg-[#1a73e8] rounded-3xl flex-col items-center justify-center text-white shadow-lg"><span className="text-5xl font-black font-sans leading-none">K</span></div>
                             </div>
                             <h1 className="text-3xl font-black tracking-tighter uppercase mb-2 text-[#202124]">Control Inventario</h1>
                             <p className="text-[#5F6368] text-sm mb-6 font-medium">Kawas Tostaduría de Café</p>
-                            <input type="password" inputMode="numeric" maxLength={4} placeholder="PIN" value={pin} onChange={handlePinChange} className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] font-bold outline-none focus:ring-4 focus:ring-blue-100 transition-all border-2 border-transparent focus:border-blue-200" autoFocus />
-                            <div className="mt-8 h-4 text-xs font-bold text-blue-600">{isSyncing && data.materiales.length === 0 && <span>Conectando...</span>}</div>
+                            <input type="password" inputMode="numeric" maxLength={4} placeholder="PIN" value={pin} onChange={handlePinChange} className="w-full py-5 bg-[#F1F3F4] rounded-2xl text-center text-3xl tracking-[1em] font-bold focus:ring-4 focus:ring-blue-100 outline-none transition-all border-2 border-transparent focus:border-blue-200" autoFocus />
+                            <div className="mt-8 h-4 text-xs font-bold text-blue-600 flex items-center justify-center">{isSyncing && data.materiales.length === 0 && <span>Estableciendo conexión...</span>}</div>
                         </div>
                     </div>
                 );
@@ -311,8 +336,9 @@
 
             return (
                 <div className="min-h-screen bg-[#F8F9FA] text-[#202124] font-sans flex flex-col lg:flex-row">
+                    {/* BARRA LATERAL */}
                     <aside className="no-print hidden lg:flex flex-col w-64 bg-white border-r border-[#E0E0E0] fixed h-full z-20">
-                        <div className="p-8"><div className="flex items-center gap-3"><img src="./logo.png" alt="K" className="w-10 h-10 object-contain" /><span className="font-black text-xl tracking-tighter uppercase leading-tight">Stock Control</span></div></div>
+                        <div className="p-8"><div className="flex items-center gap-3"><img src="./logo.png" alt="K" className="w-10 h-10 object-contain shrink-0" /><span className="font-black text-xl tracking-tighter uppercase leading-tight">Stock Control</span></div></div>
                         <nav className="flex-1 px-4 space-y-2">
                             {navItems.map(item => (
                                 <button key={item.id} onClick={() => { setView(item.id); resetNav(); setSearchTerm(''); triggerHaptic(); }} className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all ${view === item.id ? 'bg-[#E8F0FE] text-[#1a73e8] font-bold shadow-sm' : 'text-[#5F6368] hover:bg-[#F1F3F4] font-medium'}`}><Icon name={item.icon} size={22} fill={view === item.id} /> {item.label}</button>
@@ -322,45 +348,50 @@
                             <button onClick={fetchData} disabled={isSyncing} className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl border bg-white text-[#1a73e8] font-bold active:scale-95 shadow-sm hover:bg-[#F8F9FA]"><Icon name="sync" size={20} spin={isSyncing} /> <span className="text-sm">Sincronizar</span></button>
                             <button onClick={handleLogout} className="w-full flex items-center justify-center gap-3 px-4 py-3.5 rounded-2xl bg-red-50 text-red-600 font-bold active:scale-95 shadow-sm hover:bg-red-100"><Icon name="logout" size={20} fill /> <span className="text-sm">Cerrar Sesión</span></button>
                         </div>
+                        <div className="p-6 border-t border-[#F1F3F4]"><div className="flex items-center gap-3 p-3 bg-[#F8F9FA] rounded-2xl"><div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase">{user?.nombre?.charAt(0)}</div><div className="overflow-hidden"><p className="text-xs font-bold truncate">{user?.nombre}</p><p className="text-[10px] text-[#5F6368] uppercase tracking-wider">{user?.rol}</p></div></div></div>
                     </aside>
 
+                    {/* HEADER MOVIL */}
                     <div className="lg:hidden no-print flex items-center justify-between p-4 bg-white border-b sticky top-0 z-30">
                         <div className="flex items-center gap-2"><img src="./logo.png" alt="K" className="w-8 h-8 object-contain" /><span className="font-black text-lg tracking-tighter uppercase text-[#202124]">Stock Control</span></div>
                         <button onClick={handleLogout} className="p-2 bg-red-50 text-red-600 rounded-xl active:scale-90"><Icon name="logout" size={20} fill /></button>
                     </div>
 
                     <main className="flex-1 lg:ml-64 p-4 lg:p-10 pb-28 lg:pb-10 max-w-[1400px] w-full mx-auto">
+                        {/* INICIO */}
                         {view === 'dashboard' && (
                             <div className="space-y-8 fade-in-up">
                                 <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                                    <div><h2 className="text-3xl font-bold tracking-tight text-[#202124]">Control de Stock_Materiales</h2><p className="text-[#5F6368] mt-1 font-medium">Monitorización de insumos críticos para la operación.</p></div>
+                                    <div><h2 className="text-3xl font-bold tracking-tight text-[#202124]">Control de Stock_Materiales</h2><p className="text-[#5F6368] mt-1 font-medium">Estado de insumos críticos para producción.</p></div>
                                     {loginInfo && (
                                         <div className="text-left md:text-right text-[11px] text-[#5F6368] bg-white px-4 py-3 rounded-2xl border border-[#E0E0E0] shadow-sm shrink-0 flex flex-col md:items-end">
                                             <p className="mb-0.5"><span className="font-bold text-[#202124]">Operador:</span> {user?.nombre}</p>
                                             <p className="mb-0.5"><span className="font-bold text-[#202124]">Sesión:</span> {loginInfo.date} • {loginInfo.time}</p>
-                                            <p className="text-[9px] mt-1 text-[#BDC1C6] font-bold tracking-widest uppercase">Versión {loginInfo.version}</p>
+                                            <p className="text-[9px] mt-1 text-[#BDC1C6] font-bold tracking-widest uppercase tracking-widest">VERSIÓN {loginInfo.version}</p>
                                         </div>
                                     )}
                                 </div>
 
                                 {(stats.outOfStock > 0 || stats.criticalItems > 0) && (
-                                    <div className={`p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-xl fade-in-up ${stats.outOfStock > 0 ? 'bg-red-600 shadow-red-200' : 'bg-amber-500 shadow-amber-200'} text-white`}>
+                                    <div className={`p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-xl fade-in-up ${stats.outOfStock > 0 ? 'bg-red-600 text-white shadow-red-200' : 'bg-amber-500 text-white shadow-amber-200'}`}>
                                         <div className="flex items-start gap-4 md:gap-5 w-full">
-                                            <div className="bg-white/20 p-3 md:p-4 rounded-2xl animate-pulse shrink-0"><Icon name={stats.outOfStock > 0 ? "error" : "warning"} size={32} fill /></div>
+                                            <div className="bg-white/20 p-3 md:p-4 rounded-2xl shrink-0 animate-pulse"><Icon name={stats.outOfStock > 0 ? "error" : "warning"} size={32} fill /></div>
                                             <div className="w-full">
-                                                <h4 className="text-xl md:text-2xl font-black uppercase tracking-tight mb-1 text-white">Acción Requerida</h4>
-                                                <p className="text-white/90 text-sm mb-4">Atención inmediata a los siguientes materiales:</p>
-                                                <div className="flex flex-wrap gap-2.5">
+                                                <h4 className="text-xl md:text-2xl font-black uppercase tracking-tight mb-1">Acción Requerida</h4>
+                                                <p className="text-white/90 text-sm mb-4">Los siguientes materiales requieren atención inmediata:</p>
+                                                <div className="flex flex-wrap gap-2 md:gap-3">
                                                     {stats.outOfStockList.map(item => (
                                                         <button key={item.id} onClick={() => handleItemClick(item)} className="bg-white/10 hover:bg-white/20 border border-white/30 pl-3 pr-4 py-2 rounded-2xl text-sm font-bold backdrop-blur-sm flex items-center gap-2 transition-all active:scale-95 text-left group shadow-sm">
-                                                            <div className="bg-white/20 p-1.5 rounded-xl"><Icon name={getItemIcon(item.categoria, '', item.nombre)} size={16} /></div>
-                                                            <span>{item.nombre}</span><span className="bg-red-800/80 px-2 py-0.5 rounded-lg text-[9px]">AGOTADO</span>
+                                                            <Icon name={getItemIcon(item.categoria, '', item.nombre)} size={18} /> 
+                                                            <span className="truncate max-w-[150px]">{item.nombre}</span>
+                                                            <span className="bg-red-800/80 px-2 py-0.5 rounded text-[9px]">AGOTADO</span>
                                                         </button>
                                                     ))}
                                                     {stats.criticalList.map(item => (
                                                         <button key={item.id} onClick={() => handleItemClick(item)} className="bg-white/10 hover:bg-white/20 border border-white/30 pl-3 pr-4 py-2 rounded-2xl text-sm font-bold backdrop-blur-sm flex items-center gap-2 transition-all active:scale-95 text-left group shadow-sm">
-                                                            <div className="bg-white/20 p-1.5 rounded-xl"><Icon name={getItemIcon(item.categoria, '', item.nombre)} size={16} /></div>
-                                                            <span>{item.nombre}</span><span className="bg-amber-700/80 px-2 py-0.5 rounded-lg text-[9px]">CRÍTICO</span>
+                                                            <Icon name={getItemIcon(item.categoria, '', item.nombre)} size={18} /> 
+                                                            <span className="truncate max-w-[150px]">{item.nombre}</span>
+                                                            <span className="bg-amber-700/80 px-2 py-0.5 rounded text-[9px]">CRÍTICO</span>
                                                         </button>
                                                     ))}
                                                 </div>
@@ -372,59 +403,64 @@
                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
                                     {[
                                         { label: 'Ítems Totales', val: stats.totalItems, icon: 'category', color: 'text-blue-600', bg: 'bg-blue-50' },
-                                        { label: 'Existencias Críticas', val: stats.criticalItems, icon: 'warning', color: 'text-amber-600', bg: 'bg-amber-50' },
-                                        { label: 'Artículos Agotados', val: stats.outOfStock, icon: 'error', color: 'text-red-600', bg: 'bg-red-50' },
+                                        { label: 'Stock Crítico', val: stats.criticalItems, icon: 'warning', color: 'text-amber-600', bg: 'bg-amber-50' },
+                                        { label: 'Agotados', val: stats.outOfStock, icon: 'error', color: 'text-red-600', bg: 'bg-red-50' },
                                         { label: 'Salud Bodega', val: `${Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%`, icon: 'health_and_safety', color: 'text-green-600', bg: 'bg-green-50' },
                                     ].map((kpi, i) => (
-                                        <div key={i} className={`bg-white p-5 rounded-[28px] border shadow-sm ${kpi.label === 'Artículos Agotados' && stats.outOfStock > 0 ? 'border-red-300' : 'border-[#E0E0E0]'}`}>
-                                            <div className={`w-10 h-10 ${kpi.bg} ${kpi.color} rounded-xl md:rounded-2xl flex items-center justify-center mb-3`}><Icon name={kpi.icon} size={24} fill /></div>
-                                            <p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">{kpi.label}</p>
-                                            <p className="text-2xl md:text-3xl font-black text-[#202124] tracking-tight">{kpi.val}</p>
+                                        <div key={i} className={`bg-white p-4 md:p-8 rounded-[24px] md:rounded-[40px] border transition-all fade-in-up ${kpi.label === 'Agotados' && stats.outOfStock > 0 ? 'border-red-300 shadow-lg shadow-red-100' : 'border-[#E0E0E0] shadow-sm'}`} style={{ animationDelay: `${i * 50}ms` }}>
+                                            <div className={`w-10 h-10 md:w-12 md:h-12 ${kpi.bg} ${kpi.color} rounded-[14px] md:rounded-2xl flex items-center justify-center mb-3 md:mb-4`}><Icon name={kpi.icon} size={24} fill /></div>
+                                            <p className="text-[9px] md:text-[10px] font-bold text-[#5F6368] uppercase tracking-widest">{kpi.label}</p>
+                                            <p className="text-2xl md:text-3xl font-black mt-1 md:mt-2 text-[#202124] tracking-tight">{kpi.val}</p>
                                         </div>
                                     ))}
                                 </div>
                             </div>
                         )}
 
+                        {/* BUSCADOR */}
                         {view === 'inventory' && (
                             <div className="space-y-6 fade-in-up pb-6">
                                 <div className="bg-white p-4 md:p-6 rounded-[32px] border border-[#E0E0E0] shadow-sm flex items-center gap-4 focus-within:ring-4 focus-within:ring-blue-100 transition-all">
                                     <Icon name="search" size={28} className="text-[#5F6368]" />
-                                    <input type="text" placeholder="Búsqueda rápida de materiales..." value={searchTerm} onChange={e => {setSearchTerm(e.target.value); if(e.target.value) resetNav();}} className="w-full bg-transparent text-xl font-medium outline-none placeholder-[#BDC1C6]" />
+                                    <input type="text" placeholder="¿Qué estás buscando? (café, cajas, etiquetas...)" value={searchTerm} onChange={e => {setSearchTerm(e.target.value); if(e.target.value) resetNav();}} className="w-full bg-transparent text-xl font-medium outline-none placeholder-[#BDC1C6]" />
                                 </div>
+
                                 <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-2">
-                                    <button onClick={() => { resetNav(); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1 ${!navPath.category ? 'bg-[#1a73e8] text-white' : 'bg-white border text-[#5F6368]'}`}><Icon name="search" size={16} fill={!navPath.category} /> Buscador</button>
-                                    {navPath.category && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, subcategory:null, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1.5 ${!navPath.subcategory ? 'bg-[#1a73e8] text-white' : 'bg-white border text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category)} size={16} fill={!navPath.subcategory} /> {navPath.category}</button></>}
-                                    {navPath.subcategory && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, itemId:null}); triggerHaptic(); }} className="px-5 py-2.5 bg-[#1a73e8] text-white rounded-full text-xs font-bold uppercase shadow-sm flex items-center gap-1.5 shadow-blue-100"><Icon name="folder_open" size={16} fill /> {navPath.subcategory}</button></>}
+                                    <button onClick={() => { resetNav(); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1 ${!navPath.category ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name="search" size={16} fill={!navPath.category} /> Buscador</button>
+                                    {navPath.category && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, subcategory:null, itemId:null}); triggerHaptic(); }} className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase whitespace-nowrap transition-colors flex items-center gap-1.5 ${!navPath.subcategory ? 'bg-[#1a73e8] text-white shadow-md shadow-blue-200' : 'bg-white border border-[#E0E0E0] text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category)} size={16} fill={!navPath.subcategory} /> {navPath.category}</button></>}
+                                    {navPath.subcategory && <><Icon name="chevron_right" size={18} className="text-[#BDC1C6] shrink-0" /><button onClick={() => { setNavPath({...navPath, itemId:null}); triggerHaptic(); }} className="px-5 py-2.5 bg-[#1a73e8] text-white rounded-full text-xs font-bold uppercase shadow-md flex items-center gap-1.5 shadow-blue-100"><Icon name="folder_open" size={16} fill /> {navPath.subcategory}</button></>}
                                 </div>
 
                                 <div className="grid grid-cols-1 gap-4">
+                                    {/* Nivel: Categorías */}
                                     {navigationData.level === 'categories' && navigationData.items.map((item, idx) => (
-                                        <div key={idx} onClick={() => { setNavPath({ ...navPath, category: item.name }); triggerHaptic(); }} className={`bg-white p-6 rounded-[32px] border transition-all flex items-center justify-between cursor-pointer hover:shadow-lg nav-card group fade-in-up ${item.out > 0 ? 'border-red-300' : item.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${idx * 40}ms` }}>
+                                        <div key={idx} onClick={() => { setNavPath({ ...navPath, category: item.name }); triggerHaptic(); }} className={`bg-white p-6 rounded-[32px] border transition-all flex items-center justify-between cursor-pointer hover:shadow-lg nav-card group fade-in-up ${item.out > 0 ? 'border-red-300 shadow-red-50' : item.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${idx * 40}ms` }}>
                                             <div className="flex items-center gap-4">
                                                 <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${item.out > 0 ? 'bg-red-50 text-red-600' : item.critical > 0 ? 'bg-amber-50 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}><Icon name={getItemIcon(item.name)} size={28} fill /></div>
                                                 <div className="text-left"><h4 className="text-lg font-bold text-[#202124]">{item.name}</h4><div className="flex items-center flex-wrap gap-x-2 mt-1"><span className="text-xs font-medium text-[#5F6368]">{item.count} ítems</span>{item.out > 0 && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-lg text-[10px] font-black">Agotados: {item.out}</span>}{item.critical > 0 && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg text-[10px] font-black">Críticos: {item.critical}</span>}</div></div>
                                             </div>
-                                            <Icon name="chevron_right" className="text-[#BDC1C6] group-hover:text-blue-600" />
+                                            <Icon name="chevron_right" className="text-[#BDC1C6] group-hover:text-blue-600 transition-colors" />
                                         </div>
                                     ))}
 
+                                    {/* Nivel: Subcategorías (Formato Compacto) */}
                                     {navigationData.level === 'subcategories' && navigationData.items.map((sub, idx) => (
-                                        <div key={idx} onClick={() => { setNavPath({ ...navPath, subcategory: sub.name }); triggerHaptic(); }} className={`bg-white p-4 md:p-5 rounded-[28px] border ${sub.out > 0 ? 'border-red-300' : sub.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'} flex items-center justify-between cursor-pointer hover:shadow-md transition-all nav-card group fade-in-up`} style={{ animationDelay: `${idx * 40}ms` }}>
+                                        <div key={idx} onClick={() => { setNavPath({ ...navPath, subcategory: sub.name }); triggerHaptic(); }} className={`bg-white p-4 md:p-5 rounded-[24px] border ${sub.out > 0 ? 'border-red-300' : sub.critical > 0 ? 'border-amber-300' : 'border-[#E0E0E0]'} flex items-center justify-between cursor-pointer hover:shadow-md transition-all nav-card group fade-in-up`} style={{ animationDelay: `${idx * 40}ms` }}>
                                             <div className="flex items-center gap-4">
                                                 <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-transform group-hover:scale-105 ${sub.out > 0 ? 'bg-red-50 text-red-600' : sub.critical > 0 ? 'bg-amber-50 text-amber-600' : 'bg-gray-50 text-[#5F6368]'}`}><Icon name={getItemIcon(navPath.category)} size={24} fill /></div>
-                                                <div className="text-left"><h4 className="text-base font-bold text-[#202124]">{sub.name}</h4><div className="flex items-center flex-wrap gap-x-2 mt-1"><span className="text-[11px] font-medium text-[#5F6368]">{sub.count} ítems</span>{sub.out > 0 && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-md text-[9px] font-bold">Agotados: {sub.out}</span>}{sub.critical > 0 && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md text-[9px] font-bold">Críticos: {sub.critical}</span>}</div></div>
+                                                <div className="text-left"><h4 className="text-base font-bold text-[#202124] leading-tight">{sub.name}</h4><div className="flex items-center flex-wrap gap-x-2 mt-1"><span className="text-[11px] font-medium text-[#5F6368]">{sub.count} ítems</span>{sub.out > 0 && <span className="bg-red-100 text-red-700 px-2 py-0.5 rounded-md text-[9px] font-bold">Agotados: {sub.out}</span>}{sub.critical > 0 && <span className="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md text-[9px] font-bold">Críticos: {sub.critical}</span>}</div></div>
                                             </div>
-                                            <Icon name="chevron_right" className="text-[#BDC1C6] group-hover:text-blue-600" />
+                                            <Icon name="chevron_right" className="text-[#BDC1C6] group-hover:text-blue-600 transition-colors" />
                                         </div>
                                     ))}
 
+                                    {/* Nivel: Ítems Finales */}
                                     {(navigationData.level === 'items' || navigationData.level === 'search') && navigationData.items.map((m, idx) => {
                                         const isOut = (parseFloat(m.stock) || 0) <= 0; const isCrit = m.stock <= m.minimo && m.stock > 0;
                                         return (
-                                            <div key={m.id} onClick={() => handleItemClick(m)} className={`gpu-accelerated bg-white p-5 rounded-[32px] border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all cursor-pointer hover:shadow-xl group nav-card fade-in-up ${isOut ? 'border-red-300 bg-red-50/10' : isCrit ? 'border-amber-300' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${idx * 40}ms` }}>
-                                                <div className="flex items-center gap-5"><div className={`shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${isOut ? 'bg-red-600 text-white shadow-lg' : isCrit ? 'bg-amber-100 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}><Icon name={getItemIcon(m.categoria, m.subcategoria, m.nombre)} size={32} fill /></div><div><p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest mb-0.5">{m.subcategoria || 'General'}</p><h4 className={`text-lg md:text-xl font-bold tracking-tight text-[#202124]`}>{m.nombre}</h4><p className="text-[11px] text-[#1a73e8] font-bold mt-0.5 flex items-center gap-1">Ficha técnica <Icon name="arrow_forward" size={14} /></p></div></div>
-                                                <div className="flex items-center gap-6 px-2 border-t md:border-t-0 pt-4 md:pt-0 border-[#F1F3F4] justify-between md:justify-end w-full md:w-auto"><div className="text-left md:text-center"><p className="text-[9px] font-black text-[#5F6368] uppercase tracking-widest mb-1">Existencias</p><p className={`text-2xl md:text-3xl font-black ${isOut ? 'text-red-600' : isCrit ? 'text-amber-600' : 'text-[#202124]'}`}>{parseFloat(m.stock).toLocaleString()} <span className="text-[10px] font-bold text-[#5F6368] lowercase">{m.unidad}</span></p></div><div className="text-right md:text-center"><p className="text-[9px] font-black text-[#5F6368] uppercase tracking-widest mb-1">Alcance</p><p className={`text-xl md:text-2xl font-black ${isOut ? 'text-red-300' : 'text-[#1a73e8]'}`}>{isOut ? '0' : stats.getDaysLeft(m.id, m.stock)} <span className="text-[10px] font-bold text-[#5F6368] lowercase">días</span></p></div></div>
+                                            <div key={m.id} onClick={() => handleItemClick(m)} className={`gpu-accelerated bg-white p-5 md:p-6 rounded-[32px] md:rounded-[40px] border flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all cursor-pointer hover:shadow-xl group nav-card fade-in-up ${isOut ? 'border-red-300 bg-red-50/10' : isCrit ? 'border-amber-300' : 'border-[#E0E0E0]'}`} style={{ animationDelay: `${idx * 40}ms` }}>
+                                                <div className="flex items-center gap-5"><div className={`shrink-0 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-105 ${isOut ? 'bg-red-600 text-white shadow-lg shadow-red-200' : isCrit ? 'bg-amber-100 text-amber-600' : 'bg-[#E8F0FE] text-[#1a73e8]'}`}><Icon name={getItemIcon(m.categoria, m.subcategoria, m.nombre)} size={32} fill /></div><div><p className="text-[10px] font-black text-[#5F6368] uppercase tracking-widest mb-0.5">{m.subcategoria || 'General'}</p><h4 className={`text-lg md:text-xl font-bold tracking-tight text-[#202124]`}>{m.nombre}</h4><p className="text-[11px] text-[#1a73e8] font-bold mt-0.5 flex items-center gap-1">Ficha detallada <Icon name="arrow_forward" size={14} /></p></div></div>
+                                                <div className="flex items-center gap-6 px-2 border-t md:border-t-0 pt-4 md:pt-0 border-[#F1F3F4] justify-between md:justify-end w-full md:w-auto"><div className="text-left md:text-center"><p className="text-[9px] font-black text-[#5F6368] uppercase tracking-widest mb-1">Stock</p><p className={`text-2xl md:text-3xl font-black ${isOut ? 'text-red-600' : isCrit ? 'text-amber-600' : 'text-[#202124]'}`}>{parseFloat(m.stock).toLocaleString()} <span className="text-[10px] font-bold text-[#5F6368] lowercase">{m.unidad}</span></p></div><div className="text-right md:text-center"><p className="text-[9px] font-black text-[#5F6368] uppercase tracking-widest mb-1">Alcance</p><p className={`text-xl md:text-2xl font-black ${isOut ? 'text-red-300' : 'text-[#1a73e8]'}`}>{isOut ? '0' : stats.getDaysLeft(m.id, m.stock)} <span className="text-[10px] font-bold text-[#5F6368] lowercase">días</span></p></div></div>
                                             </div>
                                         );
                                     })}
@@ -432,43 +468,54 @@
                             </div>
                         )}
 
+                        {/* DETALLE */}
                         {navigationData.level === 'detail' && navigationData.item && (
                             <div className="space-y-6 fade-in-up">
-                                <button onClick={() => setNavPath({ ...navPath, itemId: null })} className="flex items-center gap-2 text-[#5F6368] font-bold hover:text-blue-600 transition-all mb-2"><Icon name="arrow_back" size={20} /> Directorio</button>
-                                <div className="bg-white p-8 rounded-[40px] border border-[#E0E0E0] shadow-sm">
+                                <button onClick={() => setNavPath({ ...navPath, itemId: null })} className="flex items-center gap-2 text-[#5F6368] font-bold hover:text-blue-600 transition-all mb-2"><Icon name="arrow_back" size={20} /> Volver</button>
+                                <div className="bg-white p-8 md:p-12 rounded-[40px] md:rounded-[48px] border border-[#E0E0E0] shadow-sm">
                                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-8">
-                                        <div className="flex items-center gap-6"><div className={`w-24 h-24 rounded-[32px] flex items-center justify-center shrink-0 ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-red-600 text-white shadow-xl shadow-red-200' : 'bg-[#1a73e8] text-white shadow-xl shadow-blue-200'}`}><Icon name={getItemIcon(navigationData.item.categoria, navigationData.item.subcategoria, navigationData.item.nombre)} size={44} fill /></div><div><p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest mb-1">{navigationData.item.categoria}</p><h3 className="text-3xl md:text-4xl font-black text-[#202124] leading-tight mb-2">{navigationData.item.nombre}</h3><div className="flex gap-2"><span className="bg-[#F1F3F4] text-[#5F6368] px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase">Mínimo: {navigationData.item.minimo} {navigationData.item.unidad}</span></div></div></div>
-                                        <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0"><button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('IN'); triggerHaptic(); }} className="action-button flex-1 p-5 bg-blue-50 text-blue-600 rounded-[28px] hover:bg-blue-600 hover:text-white transition-all"><Icon name="add_circle" size={28} fill /><span className="text-[10px] font-black uppercase text-center mt-1">Entrada</span></button><button disabled={parseFloat(navigationData.item.stock) <= 0} onClick={() => { setSelectedMaterial(navigationData.item); setModalType('OUT'); triggerHaptic(); }} className={`action-button flex-1 p-5 rounded-[28px] transition-all ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-gray-100 text-gray-300' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name="remove_circle" size={28} fill /><span className="text-[10px] font-black uppercase text-center mt-1">Salida</span></button><button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('ADJUST'); triggerHaptic(); }} className="action-button flex-1 p-5 bg-[#F1F3F4] text-[#5F6368] rounded-[28px] hover:bg-[#5F6368] hover:text-white transition-all"><Icon name="tune" size={28} fill /><span className="text-[10px] font-black uppercase text-center mt-1">Ajustar</span></button></div>
+                                        <div className="flex items-center gap-6"><div className={`w-20 h-20 md:w-24 md:h-24 rounded-[28px] md:rounded-[32px] flex items-center justify-center shrink-0 ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-red-600 text-white shadow-xl shadow-red-200' : 'bg-[#1a73e8] text-white shadow-xl shadow-blue-200'}`}><Icon name={getItemIcon(navigationData.item.categoria, navigationData.item.subcategoria, navigationData.item.nombre)} size={44} fill /></div><div><p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest mb-1">{navigationData.item.categoria}</p><h3 className="text-3xl md:text-4xl font-black tracking-tighter uppercase text-[#202124] leading-tight mb-2">{navigationData.item.nombre}</h3><div className="flex gap-2"><span className="bg-[#F1F3F4] text-[#5F6368] px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider">Cód: {navigationData.item.id}</span><span className="bg-[#F1F3F4] text-[#5F6368] px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-wider">Min: {navigationData.item.minimo} {navigationData.item.unidad}</span></div></div></div>
+                                        <div className="flex gap-3 w-full md:w-auto mt-4 md:mt-0"><button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('IN'); triggerHaptic(); }} className="action-button flex-1 p-5 bg-blue-50 text-blue-600 rounded-[28px] hover:bg-blue-600 hover:text-white transition-all"><Icon name="add_circle" size={28} fill /><span className="text-[10px] font-black uppercase text-center leading-tight">Ingresar</span></button><button disabled={parseFloat(navigationData.item.stock) <= 0} onClick={() => { setSelectedMaterial(navigationData.item); setModalType('OUT'); triggerHaptic(); }} className={`action-button flex-1 p-5 rounded-[28px] transition-all ${parseFloat(navigationData.item.stock) <= 0 ? 'bg-gray-100 text-gray-300' : 'bg-red-50 text-red-600 hover:bg-red-600 hover:text-white'}`}><Icon name="remove_circle" size={28} fill /><span className="text-[10px] font-black uppercase text-center leading-tight">Consumir</span></button><button onClick={() => { setSelectedMaterial(navigationData.item); setModalType('ADJUST'); triggerHaptic(); }} className="action-button flex-1 p-5 bg-[#F1F3F4] text-[#5F6368] rounded-[28px] hover:bg-[#5F6368] hover:text-white transition-all"><Icon name="tune" size={28} fill /><span className="text-[10px] font-black uppercase text-center leading-tight">Ajustar</span></button></div>
                                     </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mt-10 border-t border-[#F1F3F4] pt-10"><div className="bg-[#F8F9FA] p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2 ml-1">Existencias</p><div className={`flex items-baseline gap-1.5 ${parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : 'text-blue-600'}`}><span className="text-4xl md:text-5xl font-black tracking-tight">{parseFloat(navigationData.item.stock).toLocaleString()}</span><span className="text-sm md:text-base font-bold text-[#5F6368] lowercase">{navigationData.item.unidad}</span></div></div><div className="bg-[#F8F9FA] p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2 ml-1">Autonomía</p><div className="flex items-baseline gap-1.5 text-[#202124]"><span className="text-4xl md:text-5xl font-black tracking-tight">{stats.getDaysLeft(navigationData.item.id, navigationData.item.stock)}</span><span className="text-sm md:text-base font-bold text-[#5F6368] lowercase">días</span></div></div><div className="col-span-2 md:col-span-1 bg-[#F8F9FA] p-8 rounded-[32px] flex items-center gap-5"><Icon name={parseFloat(navigationData.item.stock) <= 0 ? 'error' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'warning' : 'check_circle'} size={48} fill className={parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'text-amber-600' : 'text-green-600'} /><div><p className="text-[10px] font-bold text-[#5F6368] uppercase mb-1">Estado</p><p className="text-xl font-bold uppercase tracking-tight text-[#202124]">{parseFloat(navigationData.item.stock) <= 0 ? 'Agotado' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'Crítico' : 'Óptimo'}</p></div></div></div>
+                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-6 mt-10 border-t border-[#F1F3F4] pt-10"><div className="bg-[#F8F9FA] p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2 ml-1">Stock Actual</p><div className={`flex items-baseline gap-1.5 ${parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : 'text-blue-600'}`}><span className="text-4xl md:text-5xl font-black tracking-tight">{parseFloat(navigationData.item.stock).toLocaleString()}</span><span className="text-sm md:text-base font-bold text-[#5F6368] lowercase">{navigationData.item.unidad}</span></div></div><div className="bg-[#F8F9FA] p-8 rounded-[32px]"><p className="text-[10px] font-bold text-[#5F6368] uppercase tracking-widest mb-2 ml-1">Autonomía</p><div className="flex items-baseline gap-1.5 text-[#202124]"><span className="text-4xl md:text-5xl font-black tracking-tight">{stats.getDaysLeft(navigationData.item.id, navigationData.item.stock)}</span><span className="text-sm md:text-base font-bold text-[#5F6368] lowercase">días</span></div></div><div className="col-span-2 md:col-span-1 bg-[#F8F9FA] p-8 rounded-[32px] flex items-center gap-5"><Icon name={parseFloat(navigationData.item.stock) <= 0 ? 'error' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'warning' : 'check_circle'} size={48} fill className={parseFloat(navigationData.item.stock) <= 0 ? 'text-red-600' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'text-amber-600' : 'text-green-600'} /><div><p className="text-[10px] font-bold text-[#5F6368] uppercase mb-1">Estado</p><p className="text-xl font-bold uppercase tracking-tight text-[#202124]">{parseFloat(navigationData.item.stock) <= 0 ? 'Agotado' : parseFloat(navigationData.item.stock) <= parseFloat(navigationData.item.minimo) ? 'Crítico' : 'Óptimo'}</p></div></div></div>
                                 </div>
                             </div>
                         )}
 
                         {view === 'history' && (
                             <div className="bg-white rounded-[40px] border border-[#E0E0E0] overflow-hidden shadow-sm fade-in-up mt-4">
-                                <div className="p-8 border-b border-[#F1F3F4] flex flex-col md:flex-row md:items-center justify-between gap-4"><div className="flex items-center gap-3"><Icon name="history" className="text-[#1a73e8]" size={28} fill /><h3 className="text-2xl font-bold tracking-tight text-[#202124]">Bitácora</h3></div><button onClick={() => setShowFilters(!showFilters)} className={`action-button px-5 py-2.5 rounded-2xl flex items-center gap-2 text-sm font-bold transition-colors ${showFilters ? 'bg-blue-50 text-blue-600' : 'bg-[#F8F9FA] text-[#5F6368]'}`}><Icon name="filter_list" size={20} /> Filtros</button></div>
+                                <div className="p-6 md:p-8 border-b border-[#F1F3F4] flex flex-col md:flex-row md:items-center justify-between gap-4"><div className="flex items-center gap-3"><Icon name="history" className="text-[#1a73e8]" size={28} fill /><h3 className="text-2xl font-bold tracking-tight text-[#202124]">Historial Global</h3></div><button onClick={() => setShowFilters(!showFilters)} className={`action-button px-5 py-2.5 rounded-2xl flex items-center gap-2 text-sm font-bold transition-colors ${showFilters ? 'bg-blue-50 text-blue-600' : 'bg-[#F8F9FA] text-[#5F6368]'}`}><Icon name="filter_list" size={20} /> Filtros</button></div>
                                 {showFilters && (
-                                    <div className="p-8 bg-[#F8F9FA] border-b border-[#F1F3F4] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 fade-in-up"><div className="space-y-1.5"><label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Operador</label><select value={historyFilters.user} onChange={e => setHistoryFilters({...historyFilters, user: e.target.value})} className="w-full bg-white border rounded-xl px-4 py-3 text-sm font-medium outline-none appearance-none"><option value="">Todos</option>{historyData.uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}</select></div><div className="space-y-1.5"><label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Categoría</label><select value={historyFilters.category} onChange={e => setHistoryFilters({...historyFilters, category: e.target.value, subcategory: ''})} className="w-full bg-white border rounded-xl px-4 py-3 text-sm font-medium outline-none appearance-none"><option value="">Todas</option>{historyData.uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div className="flex items-end"><button onClick={() => { setHistoryFilters({ user: '', dateStart: '', dateEnd: '', category: '', subcategory: '', sort: 'date_desc' }); triggerHaptic(); }} className="text-red-600 hover:bg-red-50 px-5 py-3 rounded-xl text-xs font-bold transition-all uppercase tracking-wider">Limpiar</button></div></div>
+                                    <div className="p-8 bg-[#F8F9FA] border-b border-[#F1F3F4] grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 fade-in-up"><div className="space-y-1.5"><label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Usuario</label><select value={historyFilters.user} onChange={e => setHistoryFilters({...historyFilters, user: e.target.value})} className="w-full bg-white border rounded-xl px-4 py-3 text-sm font-medium outline-none appearance-none"><option value="">Todos</option>{historyData.uniqueUsers.map(u => <option key={u} value={u}>{u}</option>)}</select></div><div className="space-y-1.5"><label className="text-[10px] font-black uppercase text-[#5F6368] tracking-widest ml-1">Categoría</label><select value={historyFilters.category} onChange={e => setHistoryFilters({...historyFilters, category: e.target.value, subcategory: ''})} className="w-full bg-white border rounded-xl px-4 py-3 text-sm font-medium outline-none appearance-none"><option value="">Todas</option>{historyData.uniqueCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div><div className="flex items-end"><button onClick={() => { setHistoryFilters({ user: '', dateStart: '', dateEnd: '', category: '', subcategory: '', sort: 'date_desc' }); triggerHaptic(); }} className="text-red-600 hover:bg-red-50 px-5 py-3 rounded-xl text-xs font-bold transition-all uppercase tracking-wider">Limpiar</button></div></div>
                                 )}
-                                <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left"><thead className="bg-[#F8F9FA] text-[#5F6368] text-xs font-bold uppercase tracking-widest border-b"><tr><th className="px-8 py-5">Fecha / Operador</th><th className="px-8 py-5">Tipo</th><th className="px-8 py-5">Material</th><th className="px-8 py-5 text-right">Variación / Saldo</th></tr></thead><tbody className="divide-y">{historyData.movs.slice(0, 200).map((m, i) => (<tr key={i} className="hover:bg-[#F8F9FA] transition-colors"><td className="px-8 py-5"><p className="text-sm font-bold text-[#202124]">{new Date(m.timestamp).toLocaleDateString()} <span className="text-xs font-medium text-[#5F6368]">{new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></p><p className="text-[10px] uppercase font-bold text-[#5F6368] mt-1">{m.usuario}</p></td><td className="px-8 py-5"><span className={`px-3 py-1.5 rounded-xl text-[10px] font-black inline-flex items-center gap-1 ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{m.tipo}</span></td><td className="px-8 py-5"><p className="text-sm font-bold text-[#202124]">{m.item_nombre}</p><p className="text-[10px] font-bold text-[#5F6368] mt-1 uppercase tracking-widest">{m.categoria_real}</p></td><td className="px-8 py-5 text-right"><p className={`text-sm font-bold mb-1 ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{parseFloat(m.diferencia) > 0 ? '+' : ''}{m.diferencia}</p><p className="font-black text-[#202124] text-xs bg-[#E0E0E0]/30 inline-block px-2 py-1 rounded-lg">= {m.stock_nuevo}</p></td></tr>))}</tbody></table></div>
+                                <div className="overflow-x-auto no-scrollbar"><table className="w-full text-left"><thead className="bg-[#F8F9FA] text-[#5F6368] text-xs font-bold uppercase tracking-widest border-b"><tr><th className="px-8 py-5" onClick={() => handleSort('date')}>Fecha / Usr</th><th className="px-8 py-5" onClick={() => handleSort('tipo')}>Tipo</th><th className="px-8 py-5" onClick={() => handleSort('mat')}>Material</th><th className="px-8 py-5 text-right">Variación / Saldo</th></tr></thead><tbody className="divide-y">{historyData.movs.slice(0, 200).map((m, i) => (<tr key={i} className="hover:bg-[#F8F9FA] transition-colors"><td className="px-8 py-5"><p className="text-sm font-bold">{new Date(m.timestamp).toLocaleDateString()} <span className="text-xs font-medium text-[#5F6368]">{new Date(m.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span></p><p className="text-[10px] uppercase font-bold text-[#5F6368] mt-1">{m.usuario}</p></td><td className="px-8 py-5"><span className={`px-3 py-1.5 rounded-xl text-[10px] font-black inline-flex items-center gap-1 ${m.tipo === 'IN' ? 'bg-green-100 text-green-700' : m.tipo === 'OUT' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'}`}>{m.tipo}</span></td><td className="px-8 py-5"><p className="text-sm font-bold text-[#202124]">{m.item_nombre}</p><p className="text-[10px] font-bold text-[#5F6368] mt-1 uppercase tracking-widest">{m.categoria_real}</p></td><td className="px-8 py-5 text-right"><p className={`text-sm font-bold mb-1 ${parseFloat(m.diferencia) < 0 ? 'text-red-600' : 'text-green-600'}`}>{parseFloat(m.diferencia) > 0 ? '+' : ''}{m.diferencia}</p><p className="font-black text-[#202124] text-xs bg-[#E0E0E0]/30 inline-block px-2 py-1 rounded-lg">= {m.stock_nuevo}</p></td></tr>))}</tbody></table></div>
+                            </div>
+                        )}
+
+                        {view === 'reports' && (
+                            <div className="space-y-6 fade-in-up pb-10">
+                                <div className="no-print flex flex-col md:flex-row md:items-center justify-between gap-4 mt-4 no-print"><div><h2 className="text-3xl font-bold tracking-tight text-[#202124]">Informes</h2><p className="text-[#5F6368] font-medium mt-1">Exportación de datos de inventario.</p></div><div className="flex flex-col sm:flex-row gap-4"><button onClick={() => window.open('https://docs.google.com/spreadsheets/d/1oZiefz32aCVb0iBGnfQ5drzZKvk94HVCbWcgZleIKlg/edit', '_blank')} className="action-button flex justify-center items-center gap-2 px-8 py-4 bg-white border border-[#E0E0E0] text-[#1a73e8] rounded-full font-bold shadow-sm hover:bg-[#F8F9FA] text-base"><Icon name="open_in_new" size={20} /> Ver Planilla</button><button onClick={() => { triggerHaptic(); window.print(); }} className="action-button flex justify-center items-center gap-2 px-8 py-4 bg-[#1a73e8] text-white rounded-full font-bold shadow-xl shadow-blue-200 hover:bg-[#1557b0] text-base"><Icon name="print" size={20} /> Imprimir PDF</button></div></div>
+                                <div className="bg-white p-8 md:p-14 rounded-[40px] md:rounded-[48px] border border-[#E0E0E0] shadow-sm report-container text-[#202124]"><div className="border-b-4 border-[#1a73e8] pb-6 mb-10 flex flex-col md:flex-row md:justify-between md:items-end gap-4"><div className="flex items-center gap-4"><img src="./logo.png" alt="K" className="w-14 h-14 object-contain" /><div><h1 className="text-4xl md:text-5xl font-black text-[#202124] tracking-tighter uppercase mb-1">Stock Control</h1><h2 className="text-sm md:text-base font-bold text-[#5F6368] uppercase tracking-widest">Reporte Consolidado Kawas</h2></div></div><div className="text-left md:text-right"><p className="text-sm font-bold text-[#202124]">FECHA: {new Date().toLocaleDateString()}</p><p className="text-xs font-medium text-[#5F6368] uppercase mt-1">Generado por: {user.nombre}</p></div></div><div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 mb-12"><div className="p-6 bg-[#F8F9FA] border rounded-[24px]"><p className="text-xs font-bold text-[#5F6368] uppercase tracking-widest">Ítems Totales</p><p className="text-3xl font-black mt-2 text-[#202124]">{stats.totalItems}</p></div><div className="p-6 bg-[#E8F0FE] border border-blue-100 rounded-[24px] text-blue-700"><p className="text-xs font-bold uppercase tracking-widest">Disponibilidad</p><p className="text-3xl font-black mt-2 text-blue-700">{Math.round(((stats.totalItems - stats.outOfStock) / stats.totalItems) * 100 || 0)}%</p></div><div className="p-6 bg-amber-50 border border-amber-100 rounded-[24px] text-amber-700"><p className="text-xs font-bold uppercase tracking-widest">Críticos</p><p className="text-3xl font-black mt-2 text-amber-700">{stats.criticalItems}</p></div><div className="p-6 bg-red-50 border border-red-100 rounded-[24px] text-red-700"><p className="text-xs font-bold uppercase tracking-widest">Agotados</p><p className="text-3xl font-black mt-2 text-red-700">{stats.outOfStock}</p></div></div><div className="no-print p-10 bg-blue-50 border border-blue-100 text-blue-700 rounded-[32px] text-center font-medium flex flex-col items-center gap-3"><Icon name="picture_as_pdf" size={40} /><p className="text-lg">El detalle completo del inventario se adjuntará automáticamente al generar el PDF.</p></div></div>
                             </div>
                         )}
                     </main>
 
-                    <nav className="no-print lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#E0E0E0] px-2 py-3 pb-8 z-40 flex justify-around items-center rounded-t-[32px] shadow-2xl">
+                    {/* BOTTOM NAV MÓVIL */}
+                    <nav className="no-print lg:hidden fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-[#E0E0E0] px-2 py-3 pb-8 z-40 flex justify-between items-center rounded-t-[32px] shadow-2xl">
                         {navItems.map(item => (
                             <button key={item.id} onClick={() => { setView(item.id); resetNav(); setSearchTerm(''); triggerHaptic(); }} className={`flex flex-col items-center gap-1.5 p-1 flex-1 transition-transform active:scale-90 ${view === item.id ? 'text-[#1a73e8]' : 'text-[#BDC1C6]'}`}><div className={`p-2.5 px-4 rounded-[20px] transition-colors ${view === item.id ? 'bg-[#E8F0FE]' : ''}`}><Icon name={item.icon} size={24} fill={view === item.id} /></div><span className="text-[9px] font-black uppercase tracking-widest">{item.label}</span></button>
                         ))}
+                        <button onClick={() => { fetchData(); triggerHaptic(); }} disabled={isSyncing} className={`flex flex-col items-center gap-1.5 p-1 flex-1 transition-transform active:scale-90 ${isSyncing ? 'text-[#1a73e8]' : 'text-[#5F6368]'}`}><div className={`p-2.5 px-4 rounded-[20px] transition-colors ${isSyncing ? 'bg-[#E8F0FE]' : 'bg-[#F1F3F4]'}`}><Icon name="sync" size={24} spin={isSyncing} /></div><span className="text-[9px] font-black uppercase tracking-widest">Sync</span></button>
                     </nav>
 
+                    {/* MODAL DE TRANSACCIONES */}
                     <div className={`fixed inset-0 z-[100] flex items-center justify-center p-6 transition-opacity duration-200 ${modalType ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                         <div className="absolute inset-0 bg-[#202124]/40 backdrop-blur-md" onClick={() => !isSaving && setModalType(null)}></div>
                         <div className={`bg-white w-full max-w-sm rounded-[40px] shadow-2xl z-10 overflow-hidden gpu-accelerated transition-transform duration-300 ${modalType ? 'scale-100 translate-y-0' : 'scale-95 translate-y-10'}`}>
                             <div className={`p-8 text-white ${modalType === 'IN' ? 'bg-green-600' : modalType === 'OUT' ? 'bg-red-600' : 'bg-gray-800'}`}><div className="flex justify-between items-start"><div><p className="text-[10px] font-black uppercase tracking-widest opacity-80 mb-1">Registro de {modalType}</p><h3 className="text-2xl font-bold leading-tight">{selectedMaterial?.nombre}</h3></div><div className="p-3 bg-white/20 rounded-2xl"><Icon name={modalType === 'IN' ? 'add_circle' : modalType === 'OUT' ? 'remove_circle' : 'tune'} size={32} fill /></div></div></div>
                             <form className="p-8 space-y-6" onSubmit={handleTransaction}>
                                 <div className="space-y-2"><label className="text-xs font-bold text-[#5F6368] uppercase ml-1">Cantidad ({selectedMaterial?.unidad})</label><input required name="cantidad" type="number" step="0.01" className="w-full px-6 py-5 bg-[#F1F3F4] rounded-3xl outline-none text-2xl font-black text-[#202124] focus:ring-4 focus:ring-blue-100 transition-all" placeholder="0.00" autoFocus /></div>
-                                <div className="space-y-2"><label className="text-xs font-bold text-[#5F6368] uppercase ml-1">Comentario</label><input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-2xl outline-none text-sm font-medium text-[#202124] focus:ring-4 focus:ring-blue-100 transition-all" placeholder="Escribir nota..." /></div>
+                                <div className="space-y-2"><label className="text-xs font-bold text-[#5F6368] uppercase ml-1">Comentario</label><input name="nota" className="w-full px-6 py-4 bg-[#F1F3F4] rounded-2xl outline-none text-sm font-medium text-[#202124] focus:ring-4 focus:ring-blue-100 transition-all" placeholder="Ej: Nueva recepción" /></div>
                                 <div className="flex gap-4 pt-4"><button type="button" disabled={isSaving} onClick={() => setModalType(null)} className="action-button flex-1 py-4 font-bold text-[#5F6368] bg-[#F8F9FA] hover:bg-[#E0E0E0] rounded-2xl">Cancelar</button><button disabled={isSaving} className="action-button flex-[2] py-4 bg-[#1a73e8] text-white rounded-3xl font-bold shadow-xl shadow-blue-100 flex items-center justify-center gap-2 hover:bg-[#1557b0] transition-colors">{isSaving ? <Icon name="sync" size={20} spin /> : 'Confirmar'}</button></div>
                             </form>
                         </div>
